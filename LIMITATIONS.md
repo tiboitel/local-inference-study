@@ -19,8 +19,10 @@ family (except the coding suite). Nothing below is a universal law.
 ## Statistical limits
 
 - **Small n.** ≥5 kept runs per arm for throughput (±4% noise floor); 3 runs per
-  task for coding (wide per-task intervals — the aggregate Wilson interval is
-  the honest headline).
+  task for coding. The aggregate Wilson interval treats the 33 runs as
+  independent and is therefore too narrow; it is reported as a run-level
+  interval alongside a task-clustered bootstrap. Neither is an estimate of
+  performance on unseen coding tasks.
 - **Content-driven variance.** MTP acceptance depends on the text; a different
   corpus moves both the mean and the variance. The reported acceptance (0.838)
   is a property of this prompt family.

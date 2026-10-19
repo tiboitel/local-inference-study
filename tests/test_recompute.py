@@ -55,6 +55,9 @@ class RecomputeTests(unittest.TestCase):
         self.assertEqual(overall["runs"], 33)
         self.assertEqual(overall["passes"], 30)
         self.assertEqual(overall["tests_run"], 132)
+        self.assertEqual(overall["tasks_total"], 11)
+        self.assertLessEqual(overall["cluster_lo"], overall["cluster_hi"])
+        self.assertLessEqual(overall["cluster_all_lo"], overall["cluster_all_hi"])
 
     def test_schema_and_invariants_accept_fixture(self):
         self.ct.problems.clear()

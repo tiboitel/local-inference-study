@@ -1,2 +1,2 @@
-runs,passes,pass_rate,wilson_lo,wilson_hi,tests_run,tests_passed,test_pass_rate,classeval_runs,classeval_passes,humaneval_runs,humaneval_passes,total_predicted_n,total_tool_calls
-33,19,0.5758,0.4081,0.7276,462,388,0.8398,27,13,6,6,29987,0
+runs,passes,pass_rate,wilson_lo,wilson_hi,tasks_total,tasks_any_pass,tasks_all_pass,cluster_lo,cluster_hi,cluster_all_lo,cluster_all_hi,tests_run,tests_passed,test_pass_rate,classeval_runs,classeval_passes,humaneval_runs,humaneval_passes,total_predicted_n,total_tool_calls
+33,19,0.5758,0.4081,0.7276,11,7,6,0.2727,0.8485,0.2727,0.8182,462,388,0.8398,27,13,6,6,29987,0

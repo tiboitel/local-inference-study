@@ -15,7 +15,7 @@ gate).
 | `results/deep_vs_depth0.csv` | 3 rows | bench clip 2026-10-18 §06/§07 | provenance section present |
 | `results/coding_eval.csv` | 33 runs | `data/raw/coding/run-*.json` | filename existence check |
 | `results/coding_summary.csv` | 11 tasks | aggregate of `coding_eval.csv` | aggregate agreement check |
-| `results/coding_overall.csv` | 1 row | aggregate of `coding_eval.csv` | aggregate agreement check |
+| `results/coding_overall.csv` | 1 row | aggregate of `coding_eval.csv` | aggregate agreement check, incl. task-level counts and the seeded task-cluster bootstrap |
 
 Legend:
 
@@ -27,6 +27,10 @@ Legend:
   the dated benchmark clip, and `data/sources-bench.json` carries the section for
   each row so a reviewer can re-check it. This is the only hand-entered data in
   the repo; everything else is produced by `scripts/build_results.py`.
+- **Task-clustered bootstrap.** The coding interval resamples the 11 tasks (not
+  the 33 runs) with a fixed seed and draw count in `scripts/build_results.py`,
+  and `scripts/check_traceability.py` re-derives it independently, so it is
+  reproducible byte-for-byte like every other published number.
 
 Adding a row to a hand-transcribed table requires naming its section in
 `sources-bench.json`; the traceability check fails any row without one.

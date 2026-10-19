@@ -1,8 +1,19 @@
 {
   "git": {
-    "commit": "3468474a7c771e203dffff181d2a5914d50d92da",
-    "dirty": false,
-    "dirty_paths": []
+    "commit": "1eb4839e7d0622876a54f66da30bf6e86c977356",
+    "dirty": true,
+    "dirty_paths": [
+      "M ARTICLE.md",
+      " M LIMITATIONS.md",
+      " M METHODOLOGY.md",
+      " M README.md",
+      " M data/traceability.md",
+      " M results/coding_overall.csv",
+      " M scripts/build_results.py",
+      " M scripts/check_traceability.py",
+      " M tests/test_recompute.py",
+      " M tests/test_statistics.py"
+    ]
   },
   "outputs": {
     "figures/fig_coding_passrate.png": "2ef615971911c93d6d1e534012b926920f71911b468f671000d6998aea6071f5",
@@ -11,7 +22,7 @@
     "figures/fig_mtp_ab.png": "9d865b368541119d2934bb995dd644566fc26d480795144fe49a9bbc4dd26bef",
     "figures/fig_prefill_vs_ctx.png": "a67d1dd5de5b52cd17eff4833f21ccd4872ff68d792f147ff9ab877b1318eae4",
     "results/coding_eval.csv": "2ebb1250a0cb05c130021f8a9a329f7feb56d917a2c94eeb2b915046656bbc0c",
-    "results/coding_overall.csv": "2b5a4c7c73ca417462d8c1dd73b202967296da04ce695e2c0d13a761afc6c0e9",
+    "results/coding_overall.csv": "a4bc5ae248759ad9978ce24a90fecf80e800d068e3c5a8c7269ec7fc9942f7a9",
     "results/coding_summary.csv": "3a9adabbb6d827c8cdd0977218007479e492a73ef8fad73eb7639e4e23c0cd13",
     "results/deep_vs_depth0.csv": "4aec7434dce94322f8d3bb7a99813b715fef349597ed37f60e28985239df9d0e",
     "results/moe_cache.csv": "6482daa6385a6678d0b3d0975acb5f650e15ff4dca373ee14a022605925e66b0",
@@ -23,5 +34,5 @@
   },
   "schema": 1,
   "source_manifest": "data/manifest.json",
-  "source_manifest_sha256": "2ece31b76fe70faec7e270d2b77b45f7d84902c8ff5201e52970361548540283"
+  "source_manifest_sha256": "513b06f423c0f0b5d613df9a6615b225d95171830b7ceb8554d1a85e3a3431e0"
 }

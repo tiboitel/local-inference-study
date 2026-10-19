@@ -19,6 +19,7 @@ from __future__ import annotations
 import csv
 import json
 import math
+import random
 import statistics
 import subprocess
 import sys
@@ -36,6 +37,8 @@ RAW_P4 = RAW / "p4"
 # per-field tolerance: defaults to two-decimal rounding; wider for rounded ints
 TOL = {"ram_peak_mib": 0.51, "predicted_n_mean": 0.51,
        "pass_rate": 1e-4, "wilson_lo": 1e-4, "wilson_hi": 1e-4,
+       "cluster_lo": 1e-4, "cluster_hi": 1e-4,
+       "cluster_all_lo": 1e-4, "cluster_all_hi": 1e-4,
        "test_pass_rate": 1e-4}
 
 problems: list[str] = []
@@ -86,6 +89,25 @@ def wilson(k: int, n: int, z: float = 1.96):
     centre = (p + z * z / (2 * n)) / denom
     half = (z * math.sqrt(p * (1 - p) / n + z * z / (4 * n * n))) / denom
     return max(0.0, centre - half), min(1.0, centre + half)
+
+
+def cluster_bootstrap(groups, stat, seed: int = 0, draws: int = 10000):
+    """Independent re-implementation of the builder's task-cluster bootstrap."""
+    if not groups:
+        return (None, None)
+    rng = random.Random(seed)
+    m = len(groups)
+    out = sorted(stat([groups[rng.randrange(m)] for _ in range(m)])
+                 for _ in range(draws))
+    return (out[int(0.025 * draws)], out[int(0.975 * draws)])
+
+
+def cluster_run_rate(groups) -> float:
+    return sum(sum(g) for g in groups) / sum(len(g) for g in groups)
+
+
+def cluster_all_pass_share(groups) -> float:
+    return sum(1 for g in groups if all(g)) / len(groups)
 
 
 def mean(xs):
@@ -281,6 +303,11 @@ def recompute_coding(coding) -> tuple[list, list, dict]:
         })
     n, k = len(runs), sum(r["passed"] for r in runs)
     lo, hi = wilson(k, n)
+    groups = [[r["passed"] for r in runs if r["task_id"] == tid]
+              for tid in dict.fromkeys(r["task_id"] for r in runs)]
+    clus_lo, clus_hi = cluster_bootstrap(groups, cluster_run_rate)
+    clus_all_lo, clus_all_hi = cluster_bootstrap(groups,
+                                                 cluster_all_pass_share)
     ce = [r for r in runs if r["source"] == "classeval"]
     he = [r for r in runs if r["source"] != "classeval"]
     tr = sum(r["tests_run"] for r in runs)
@@ -288,6 +315,12 @@ def recompute_coding(coding) -> tuple[list, list, dict]:
     overall = {
         "runs": n, "passes": k, "pass_rate": round(k / n, 4),
         "wilson_lo": round(lo, 4), "wilson_hi": round(hi, 4),
+        "tasks_total": len(groups),
+        "tasks_any_pass": sum(1 for g in groups if any(g)),
+        "tasks_all_pass": sum(1 for g in groups if all(g)),
+        "cluster_lo": round(clus_lo, 4), "cluster_hi": round(clus_hi, 4),
+        "cluster_all_lo": round(clus_all_lo, 4),
+        "cluster_all_hi": round(clus_all_hi, 4),
         "tests_run": tr, "tests_passed": tp,
         "test_pass_rate": round(tp / tr, 4),
         "classeval_runs": len(ce), "classeval_passes": sum(r["passed"] for r in ce),
@@ -375,10 +408,14 @@ def stage_claims(magg, coverall) -> None:
         f"{tp}/{tr}": "test-method pass",
         f"{o['classeval_passes']}/{o['classeval_runs']}": "ClassEval-only passes",
         f"{o['humaneval_passes']}/{o['humaneval_runs']}": "single-function floor",
+        f"{o['tasks_all_pass']}/{o['tasks_total']}": "tasks passing all runs",
+        f"{o['tasks_any_pass']}/{o['tasks_total']}": "tasks passing any run",
         f"{k / n * 100:.1f}": "run pass rate",
         f"{tp / tr * 100:.1f}": "test-method pass rate",
         f"{o['wilson_lo'] * 100:.1f}": "Wilson lower bound",
         f"{o['wilson_hi'] * 100:.1f}": "Wilson upper bound",
+        f"{o['cluster_lo'] * 100:.1f}": "task-clustered lower bound",
+        f"{o['cluster_hi'] * 100:.1f}": "task-clustered upper bound",
     }
     arms = {r["arm"]: r for r in magg}
     off_tg, on_tg = float(arms["off"]["tg_mean"]), float(arms["on"]["tg_mean"])

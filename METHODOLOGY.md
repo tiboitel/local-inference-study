@@ -44,8 +44,11 @@ End-to-end completion, not a proxy metric:
 - **Harness self-test.** The canonical solutions are run through the same
   extract → write → `unittest` path and must pass 11/11 before any model call,
   so a failing run is a failing implementation, not a broken harness.
-- **Headline.** Run-level completion with a Wilson 95% interval, plus a
-  test-method-level pass rate to separate "wrong" from "nearly right".
+- **Headline.** Run-level completion with a Wilson 95% interval — labelled
+  run-level because the 33 runs are 11 tasks × 3 and are not independent. We
+  also report task-level counts and a task-clustered bootstrap interval, plus a
+  test-method-level pass rate to separate "wrong" from "nearly right". Neither
+  interval estimates performance on unseen coding tasks.
 
 ## Failure attribution
 
@@ -56,8 +59,10 @@ model failure inflates every downstream number.
 
 Rejected framings (recorded so they are not repeated):
 
-- **Depth-0 token generation as a headline.** It measures a workload nobody
-  runs and overstates throughput ~3×.
+- **Depth-0 token generation as a headline.** Depth-0 throughput can
+  substantially overestimate decode at long context (in this study's
+  comparison, ~3×); tune against the request path that matches the intended
+  workload.
 - **Small-prompt smoke tests as "baseline".** A 25-token request is ~97% fixed
   per-request overhead (~62 ms); its t/s says nothing about prefill.
 - **A single-point measurement.** Every quantitative claim here has ≥5 kept

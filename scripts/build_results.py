@@ -13,6 +13,7 @@ import csv
 import json
 import math
 import os
+import random
 import shutil
 import statistics
 import tempfile
@@ -57,6 +58,30 @@ def wilson(k: int, n: int, z: float = 1.96):
     centre = (p + z * z / (2 * n)) / denom
     half = (z * math.sqrt(p * (1 - p) / n + z * z / (4 * n * n))) / denom
     return (max(0.0, centre - half), min(1.0, centre + half))
+
+
+def cluster_bootstrap(groups, stat, seed: int = 0, draws: int = 10000):
+    """Percentile bootstrap over clusters (tasks), not individual runs.
+
+    `groups` is a list of per-cluster value lists. Resampling whole clusters
+    keeps the within-task dependence that a run-level Wilson interval ignores.
+    Fixed seed and draw count make the result reproducible byte-for-byte.
+    """
+    if not groups:
+        return (None, None)
+    rng = random.Random(seed)
+    m = len(groups)
+    out = sorted(stat([groups[rng.randrange(m)] for _ in range(m)])
+                 for _ in range(draws))
+    return (out[int(0.025 * draws)], out[int(0.975 * draws)])
+
+
+def cluster_run_rate(groups) -> float:
+    return sum(sum(g) for g in groups) / sum(len(g) for g in groups)
+
+
+def cluster_all_pass_share(groups) -> float:
+    return sum(1 for g in groups if all(g)) / len(groups)
 
 
 def write_csv(path: Path, rows, fields):
@@ -240,6 +265,11 @@ def build_coding(raw: Path, out: Path):
     n = len(runs)
     k = sum(r["passed"] for r in runs)
     lo, hi = wilson(k, n)
+    groups = [[r["passed"] for r in runs if r["task_id"] == tid]
+              for tid in dict.fromkeys(r["task_id"] for r in runs)]
+    clus_lo, clus_hi = cluster_bootstrap(groups, cluster_run_rate)
+    clus_all_lo, clus_all_hi = cluster_bootstrap(groups,
+                                                 cluster_all_pass_share)
     ce = [r for r in runs if r["source"] == "classeval"]
     he = [r for r in runs if r["source"] != "classeval"]
     tests_run = sum(r["tests_run"] for r in runs)
@@ -250,6 +280,13 @@ def build_coding(raw: Path, out: Path):
         "pass_rate": round(k / n, 4),
         "wilson_lo": round(lo, 4),
         "wilson_hi": round(hi, 4),
+        "tasks_total": len(groups),
+        "tasks_any_pass": sum(1 for g in groups if any(g)),
+        "tasks_all_pass": sum(1 for g in groups if all(g)),
+        "cluster_lo": round(clus_lo, 4),
+        "cluster_hi": round(clus_hi, 4),
+        "cluster_all_lo": round(clus_all_lo, 4),
+        "cluster_all_hi": round(clus_all_hi, 4),
         "tests_run": tests_run,
         "tests_passed": tests_passed,
         "test_pass_rate": round(tests_passed / tests_run, 4),

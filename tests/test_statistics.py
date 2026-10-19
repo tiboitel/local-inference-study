@@ -30,6 +30,20 @@ class StatisticsTests(unittest.TestCase):
         self.assertAlmostEqual(hi, 0.7276, places=3)
         self.assertEqual(self.br.wilson(0, 0), (None, None))
 
+    def test_cluster_bootstrap_is_deterministic(self):
+        groups = [[1, 1, 1], [0, 0, 0], [1, 0, 0]]
+        a = self.br.cluster_bootstrap(groups, self.br.cluster_run_rate)
+        b = self.br.cluster_bootstrap(groups, self.br.cluster_run_rate)
+        self.assertEqual(a, b)
+
+    def test_cluster_bootstrap_matches_published_coding_bounds(self):
+        # per-task pass counts from results/coding_summary.csv (task_id order)
+        counts = [0, 0, 3, 0, 1, 0, 3, 3, 3, 3, 3]
+        groups = [[1] * c + [0] * (3 - c) for c in counts]
+        lo, hi = self.br.cluster_bootstrap(groups, self.br.cluster_run_rate)
+        self.assertAlmostEqual(round(lo, 4), 0.2727, places=4)
+        self.assertAlmostEqual(round(hi, 4), 0.8485, places=4)
+
 
 if __name__ == "__main__":
     unittest.main()

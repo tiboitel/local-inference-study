@@ -12,15 +12,19 @@ trace behind it.
 | # | Finding | Evidence |
 |---|---|---|
 | 1 | **MTP speculative decoding more than doubles deep-context decode at 64k: 14.79 → 38.56 t/s (+160.7%)**, while prefill is unchanged (−1.19%, inside the ~4% noise floor). | [results/mtp_ab.csv](results/mtp_ab.csv) |
-| 2 | **Depth-0 `llama-bench` overstates real decode by roughly 3×: 46.0 t/s at depth 0 vs ~15 t/s once a full 64k prompt is in front of it.** A configuration tuned on depth-0 measures a workload nobody runs. | [results/deep_vs_depth0.csv](results/deep_vs_depth0.csv) |
+| 2 | **Depth-0 `llama-bench` measures 46.0 t/s, but only ~15 t/s once a full 64k prompt is in front of it (~3× in this comparison).** Depth-0 throughput can substantially overestimate decode performance at long context. Tune against the request path that matches your intended workload. | [results/deep_vs_depth0.csv](results/deep_vs_depth0.csv) |
 | 3 | **The MoE expert cache is the prefill lever: 308 → 776 t/s (~2.5×) in the controlled short-context A/B.** At 64k, cache-off prefill collapses below 73 t/s, versus ~677–712 t/s with the cache on. | [results/moe_cache.csv](results/moe_cache.csv) |
 
 *Also measured:* the 28B `ncmoe` optimum does **not** transfer to the 29B MTP
 profile (`ncmoe=17` OOMs at load, `ncmoe=20` fits) —
 [results/ncmoe_probe_29b.csv](results/ncmoe_probe_29b.csv); and end-to-end
-coding on the shipped sampling is 19/33 runs (57.6%, Wilson 95% CI 40.8–72.8)
-with 84.0% of individual test methods passing —
-[results/coding_overall.csv](results/coding_overall.csv).
+coding on the shipped sampling is **19/33 runs = 57.6%** (run-level Wilson 95%
+CI 40.8–72.8, which treats the 33 runs as independent; they are 11 tasks × 3,
+and a task-clustered bootstrap gives 27.3–84.9%), with **6/11 tasks passing all
+three runs and 4/11 never passing**, and 84.0% of individual test methods
+passing — [results/coding_overall.csv](results/coding_overall.csv),
+[results/coding_summary.csv](results/coding_summary.csv). Neither interval
+estimates general performance on unseen coding tasks.
 
 ## MTP comparison at 64k
 
@@ -62,8 +66,10 @@ and flag detail: [HARDWARE-AND-RUNTIME.md](HARDWARE-AND-RUNTIME.md).
   transfer across models.
 - The *magnitudes* for this exact configuration: 64k context, `ncmoe=20`, MTP
   `n-max=2`, `turbo4`/`turbo3`, this build, this prompt family.
-- End-to-end coding completion under the shipped sampling, with a Wilson
-  interval rather than a point estimate.
+- End-to-end coding completion under the shipped sampling, reported as a
+  run-level rate with a run-level Wilson interval, a task-clustered bootstrap
+  interval, and task-level counts. These describe this fixed 11-task suite; they
+  are not an estimate of general coding ability.
 
 **Not established here**
 
@@ -74,7 +80,8 @@ and flag detail: [HARDWARE-AND-RUNTIME.md](HARDWARE-AND-RUNTIME.md).
 - That MTP `n-max=2` is the optimum draft count, or that these magnitudes
   generalize to another corpus. Acceptance is content-driven.
 - That throughput predicts correctness. The coding suite measures completion
-  under hidden tests, not general code quality.
+  under hidden tests on 11 fixed tasks; neither the run-level nor the
+  task-clustered interval projects to unseen coding tasks.
 
 Full boundary of the claims: [LIMITATIONS.md](LIMITATIONS.md).
 
@@ -111,9 +118,11 @@ Step-by-step detail and the private-runner boundaries:
 ## The study in detail
 
 Most local-LLM performance writing reports `llama-bench` prompt-eval and
-token-generation at depth 0. That measures a workload nobody runs. An agent
-serving real requests sees a large prompt (tens of thousands of tokens) and then
-generates in its shadow. This study measures that path.
+token-generation at depth 0. Depth-0 throughput can substantially overestimate
+decode performance at long context — tune against the request path that matches
+your intended workload. An agent serving real requests sees a large prompt
+(tens of thousands of tokens) and then generates in its shadow. This study
+measures that path.
 
 The live measurements come from the real request path, not a synthetic depth-0
 benchmark; imported `llama-bench` rows are labelled as such in each figure's

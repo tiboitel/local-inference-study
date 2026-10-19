@@ -44,11 +44,12 @@ server-measured request.*
 
 ![Depth-0 vs deep-context decode](figures/fig_deep_vs_depth0.png)
 
-The depth-0 number overstates real decode throughput by roughly **3×**. A
-configuration chosen on depth-0 figures will be tuned for a workload nobody
-runs. Small prompts are worse still: a 25-token request is about **97% fixed
-per-request overhead** (~62 ms), so its tokens-per-second number says nothing
-about prefill at all.
+In this comparison the depth-0 number overstates real decode throughput by
+roughly **3×**. Depth-0 throughput can substantially overestimate decode
+performance at long context; tune against the request path that matches your
+intended workload. Small prompts are worse still: a 25-token request is about
+**97% fixed per-request overhead** (~62 ms), so its tokens-per-second number
+says nothing about prefill at all.
 
 This is the study's premise: measure the request path, or do not claim a result.
 
@@ -68,8 +69,9 @@ skipping it. Full detail in [METHODOLOGY.md](METHODOLOGY.md); the short version:
 
 Three framings were tested and rejected:
 
-- **Depth-0 token generation as a headline** (see §2): it measures nothing the
-  agent does.
+- **Depth-0 token generation as a headline** (see §2): it can substantially
+  overestimate decode at long context and says nothing about the request path
+  an agent runs.
 - **Small-prompt smoke tests as a "baseline"**: ~97% overhead.
 - **Single-point measurements**: every claim here has ≥5 kept runs and a
   reported uncertainty.
@@ -234,11 +236,20 @@ versus prompt-contract ambiguity remains a limitation.
 
 | Metric | Result |
 |---|---|
-| Run-level completion | **19/33 = 57.6%** (Wilson 95% CI 40.8–72.8) |
+| Run-level completion | **19/33 = 57.6%** (run-level Wilson 95% CI 40.8–72.8) |
+| Task-clustered bootstrap, run rate | **95% CI 27.3–84.9%** (resamples the 11 tasks, not the 33 runs) |
+| Tasks passing all 3 runs | **6/11 = 54.5%** |
+| Tasks passing ≥1 run | **7/11 = 63.6%** |
 | Test-method pass | **388/462 = 84.0%** |
 | Class-level tasks only | 13/27 = 48.1% |
 | Single-function floor | 6/6 = 100% |
 | Median wall clock / task | 16.3 s |
+
+*The run-level Wilson interval assumes 33 independent trials; the runs are 11
+tasks × 3, so repeated runs of the same task are correlated and that interval is
+too narrow. The task-clustered bootstrap respects the task structure and is
+correspondingly wide. Neither interval is an estimate of performance on unseen
+coding tasks — the suite is 11 selected tasks under hidden-test contracts.*
 
 ![Coding completion by task](figures/fig_coding_passrate.png)
 
