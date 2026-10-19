@@ -1,5 +1,6 @@
 # raw run traces are regenerated, not committed
 data/raw/
+profile/
 *.gguf
 *.log
 
