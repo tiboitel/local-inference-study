@@ -1,0 +1,4 @@
+mode,tg_t_s,note,section
+depth0_llama_bench,46.0,"ncmoe18 moe-on @64k, llama-bench TG at depth 0",06-vram-budget.md
+deep_server_measured,15.3,"ncmoe17 moe-on, steady-state after full 64k prompt (cache hit)",07-64k-optimal.md
+deep_server_measured_prefill_gen,15.7,"same run, first generation after prefill",07-64k-optimal.md

@@ -1,0 +1,4 @@
+config,ncmoe,moe_cache,probe,oom_point
+ref20,20,on,OK,
+cand17,17,on,FAIL,ggml_backend_cuda_buffer_type_alloc_buffer: allocating 128.00 MiB on device 0: cudaMalloc failed: out of memory
+ctrl17off,17,off,FAIL,ggml_backend_cuda_buffer_type_alloc_buffer: allocating 208.03 MiB on device 0: cudaMalloc failed: out of memory

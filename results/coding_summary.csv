@@ -1,0 +1,12 @@
+task_id,class_name,source,runs,passes,tests_run,tests_passed,wall_p50_s,predicted_n_mean
+ClassEval_27,CurrencyConverter,classeval,3,0,72,69,19.3,957.0
+ClassEval_46,Interpolation,classeval,3,0,39,16,41.8,1775.0
+ClassEval_47,IPAddress,classeval,3,3,48,48,19.9,992.0
+ClassEval_55,Manacher,classeval,3,0,33,9,36.7,1523.0
+ClassEval_6,AvgPartition,classeval,3,1,33,27,10.9,588.0
+ClassEval_67,Order,classeval,3,0,51,33,23.8,1237.0
+ClassEval_7,BalancedBrackets,classeval,3,3,45,45,11.3,811.0
+ClassEval_75,ShoppingCart,classeval,3,3,69,69,13.9,703.0
+ClassEval_86,TicTacToe,classeval,3,3,48,48,18.8,954.0
+HumanEval_style_count_vowels,count_vowels,humaneval-style,3,3,12,12,3.5,174.0
+HumanEval_style_merge_intervals,merge_intervals,humaneval-style,3,3,12,12,6.1,282.0

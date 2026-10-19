@@ -1,0 +1,6 @@
+ncmoe,pp_t_s,tg_t_s,vram_mib,verdict,section
+20,308.5,43.0,8840,"safe, slowest",04-ncmoe-sweep.md
+18,337.0,45.9,,safe,04-ncmoe-sweep.md
+16,381.3,49.5,,OPTIMUM: fastest reliable,04-ncmoe-sweep.md
+15,,,,"flaky (OOM edge, 2/2)",04-ncmoe-sweep.md
+14,,,,OOM: does not fit,04-ncmoe-sweep.md

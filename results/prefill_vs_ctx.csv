@@ -1,0 +1,4 @@
+ctx,pp_t_s,note,section
+1024,859,,06-vram-budget.md
+65536,712.2,,06-vram-budget.md
+131072,109,"upper bound; actual <109, attention-bound",06-vram-budget.md

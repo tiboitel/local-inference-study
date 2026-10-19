@@ -1,0 +1,9 @@
+config,ctx,pp_t_s,tg_t_s,note,section
+ncmoe20_auto,1024,308.5,43.0,cache off; PCIe expert fetch,04-ncmoe-sweep.md
+ncmoe20_moe_soft,1024,313.2,44.4,cache soft: no help,04-ncmoe-sweep.md
+ncmoe20_moe_on,1024,775.7,44.1,cache on: 2.5x prefill,04-ncmoe-sweep.md
+ncmoe18_moe_on,65536,712.2,46.0,"best long-ctx config (llama-bench, depth-0 TG)",06-vram-budget.md
+ncmoe20_moe_on,65536,676.9,42.7,llama-bench,06-vram-budget.md
+ncmoe20_no_moe,65536,73.0,,"timeout; upper bound, actual <73",06-vram-budget.md
+ncmoe16_no_moe,65536,353.4,14.5,cache off collapses prefill; server method,07-64k-optimal.md
+ncmoe17_moe_on,65536,1047.3,15.3,robust 64k optimum (server method),07-64k-optimal.md

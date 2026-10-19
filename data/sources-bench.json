@@ -1,0 +1,31 @@
+{
+  "_note": "Hand-transcribed from the dated benchmark clip (2026-10-18, Qwen3.6-28B-REAP20 serving optimization). Each row records the section it came from so a reviewer can check it. This is the only hand-entered data in the repo; everything else is generated from raw run traces. Do not edit a CSV directly.",
+  "provenance": "benchmark clip 2026-10-18 (Qwen3.6-28B-REAP20-A3B-Q4_K_M, RTX 3060 12GB, llama.cpp bcb85fc)",
+  "ncmoe_sweep_28b": [
+    {"ncmoe": 20, "pp_t_s": 308.5, "tg_t_s": 43.0, "vram_mib": 8840, "verdict": "safe, slowest", "section": "04-ncmoe-sweep.md"},
+    {"ncmoe": 18, "pp_t_s": 337.0, "tg_t_s": 45.9, "vram_mib": null, "verdict": "safe", "section": "04-ncmoe-sweep.md"},
+    {"ncmoe": 16, "pp_t_s": 381.3, "tg_t_s": 49.5, "vram_mib": null, "verdict": "OPTIMUM: fastest reliable", "section": "04-ncmoe-sweep.md"},
+    {"ncmoe": 15, "pp_t_s": null, "tg_t_s": null, "vram_mib": null, "verdict": "flaky (OOM edge, 2/2)", "section": "04-ncmoe-sweep.md"},
+    {"ncmoe": 14, "pp_t_s": null, "tg_t_s": null, "vram_mib": null, "verdict": "OOM: does not fit", "section": "04-ncmoe-sweep.md"}
+  ],
+  "moe_cache": [
+    {"config": "ncmoe20_auto", "ctx": 1024, "pp_t_s": 308.5, "tg_t_s": 43.0, "note": "cache off; PCIe expert fetch", "section": "04-ncmoe-sweep.md"},
+    {"config": "ncmoe20_moe_soft", "ctx": 1024, "pp_t_s": 313.2, "tg_t_s": 44.4, "note": "cache soft: no help", "section": "04-ncmoe-sweep.md"},
+    {"config": "ncmoe20_moe_on", "ctx": 1024, "pp_t_s": 775.7, "tg_t_s": 44.1, "note": "cache on: 2.5x prefill", "section": "04-ncmoe-sweep.md"},
+    {"config": "ncmoe18_moe_on", "ctx": 65536, "pp_t_s": 712.2, "tg_t_s": 46.0, "note": "best long-ctx config (llama-bench, depth-0 TG)", "section": "06-vram-budget.md"},
+    {"config": "ncmoe20_moe_on", "ctx": 65536, "pp_t_s": 676.9, "tg_t_s": 42.7, "note": "llama-bench", "section": "06-vram-budget.md"},
+    {"config": "ncmoe20_no_moe", "ctx": 65536, "pp_t_s": 73.0, "tg_t_s": null, "note": "timeout; upper bound, actual <73", "section": "06-vram-budget.md"},
+    {"config": "ncmoe16_no_moe", "ctx": 65536, "pp_t_s": 353.4, "tg_t_s": 14.5, "note": "cache off collapses prefill; server method", "section": "07-64k-optimal.md"},
+    {"config": "ncmoe17_moe_on", "ctx": 65536, "pp_t_s": 1047.3, "tg_t_s": 15.3, "note": "robust 64k optimum (server method)", "section": "07-64k-optimal.md"}
+  ],
+  "prefill_vs_ctx": [
+    {"ctx": 1024, "pp_t_s": 859, "section": "06-vram-budget.md"},
+    {"ctx": 65536, "pp_t_s": 712.2, "section": "06-vram-budget.md"},
+    {"ctx": 131072, "pp_t_s": 109, "note": "upper bound; actual <109, attention-bound", "section": "06-vram-budget.md"}
+  ],
+  "deep_vs_depth0": [
+    {"mode": "depth0_llama_bench", "tg_t_s": 46.0, "note": "ncmoe18 moe-on @64k, llama-bench TG at depth 0", "section": "06-vram-budget.md"},
+    {"mode": "deep_server_measured", "tg_t_s": 15.3, "note": "ncmoe17 moe-on, steady-state after full 64k prompt (cache hit)", "section": "07-64k-optimal.md"},
+    {"mode": "deep_server_measured_prefill_gen", "tg_t_s": 15.7, "note": "same run, first generation after prefill", "section": "07-64k-optimal.md"}
+  ]
+}
