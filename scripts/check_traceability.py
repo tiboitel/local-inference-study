@@ -13,6 +13,7 @@ Stages, each independent of scripts/build_results.py:
   6. staleness   regenerating results/ from raw reproduces the committed CSVs
 
     python scripts/check_traceability.py   # exit 0 == release gate passed
+    python scripts/check_traceability.py --report results/traceability.txt
 """
 from __future__ import annotations
 
@@ -482,7 +483,12 @@ def report_text() -> str:
         "TRACEABILITY REPORT",
         "",
         "result: OK",
-        "checks: schema, integrity, recompute, invariants, claims, staleness",
+        "stage_schema: OK",
+        "stage_integrity: OK",
+        "stage_recompute: OK",
+        "stage_invariants: OK",
+        "stage_claims: OK",
+        "stage_staleness: OK",
         f"mtp_runs: {len(load('mtp_runs.csv'))}",
         f"coding_runs: {len(load('coding_eval.csv'))}",
         f"result_tables: {len(tables)}",

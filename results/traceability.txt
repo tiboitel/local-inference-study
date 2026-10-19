@@ -1,7 +1,12 @@
 TRACEABILITY REPORT
 
 result: OK
-checks: schema, integrity, recompute, invariants, claims, staleness
+stage_schema: OK
+stage_integrity: OK
+stage_recompute: OK
+stage_invariants: OK
+stage_claims: OK
+stage_staleness: OK
 mtp_runs: 20
 coding_runs: 33
 result_tables: 10
