@@ -1,0 +1,53 @@
+{
+  "task_id": "ClassEval_46",
+  "run": 3,
+  "class_name": "Interpolation",
+  "source": "classeval",
+  "wall_s": 21.019055604934692,
+  "extract_ok": true,
+  "code_chars": 2488,
+  "loop": {
+    "answer": "```python\nclass Interpolation:\n    \"\"\"\n    This is a class that implements the Linear interpolation operation of one-dimensional and two-dimensional data\n    \"\"\"\n\n    def __init__(self):\n        pass\n\n    @staticmethod\n    def interpolate_1d(x, y, x_interp):\n        \"\"\"\n        Linear interpolation of one-dimensional data\n        :param x: The x-coordinate of the data point, list.\n        :param y: The y-coordinate of the data point, list.\n        :param x_interp: The x-coordinate of the interpolation point, list.\n        :return: The y-coordinate of the interpolation point, list.\n        >>> interpolation = Interpolation()\n        >>> interpolation.interpolate_1d([1, 2, 3], [1, 2, 3], [1.5, 2.5])\n        [1.5, 2.5]\n\n        \"\"\"\n        result = []\n        for xi in x_interp:\n            # Find the bracketing indices\n            idx = 0\n            while idx < len(x) - 1 and x[idx] < xi:\n                idx += 1\n            if idx >= len(x) - 1:\n                # xi is beyond the range; extrapolate using the last segment\n                idx = len(x) - 2\n            x0, x1 = x[idx], x[idx + 1]\n            y0, y1 = y[idx], y[idx + 1]\n            if x1 == x0:\n                yi = y0\n            else:\n                yi = y0 + (y1 - y0) * (xi - x0) / (x1 - x0)\n            result.append(yi)\n        return result\n\n    @staticmethod\n    def interpolate_2d(x, y, z, x_interp, y_interp):\n        \"\"\"\n        Linear interpolation of two-dimensional data\n        :param x: The x-coordinate of the data point, list.\n        :param y: The y-coordinate of the data point, list.\n        :param z: The z-coordinate of the data point, list.\n        :param x_interp: The x-coordinate of the interpolation point, list.\n        :param y_interp: The y-coordinate of the interpolation point, list.\n        :return: The z-coordinate of the interpolation point, list.\n        >>> interpolation = Interpolation()\n        >>> interpolation.interpolate_2d([1, 2, 3], [1, 2, 3], [[1, 2, 3], [4, 5, 6], [7, 8, 9]], [1.5, 2.5], [1.5, 2.5])\n        [3.0, 7.0]\n\n        \"\"\"\n        result = []\n        # First, interpolate along x for each row\n        z_x = []\n        for row in z:\n            z_x.append(Interpolation.interpolate_1d(x, row, x_interp))\n        # Then, interpolate along y for each interpolated x\n        for i in range(len(x_interp)):\n            values = [z_x[j][i] for j in range(len(y))]\n            result.append(Interpolation.interpolate_1d(y, values, y_interp))\n        return result\n```",
+    "calls": [],
+    "turns": 1,
+    "turn_log": [
+      {
+        "turn": 1,
+        "content": "```python\nclass Interpolation:\n    \"\"\"\n    This is a class that implements the Linear interpolation operation of one-dimensional and two-dimensional data\n    \"\"\"\n\n    def __init__(self):\n        pass\n\n    @staticmethod\n    def interpolate_1d(x, y, x_interp):\n        \"\"\"\n        Linear interpolation of one-dimensional data\n        :param x: The x-coordinate of the data point, list.\n        :param y: The y-coordinate of the data point, list.\n        :param x_interp: The x-coordinate of the interpolation point, list.\n        :return: The y-coordinate of the interpolation point, list.\n        >>> interpolation = Interpolation()\n        >>> interpolation.interpolate_1d([1, 2, 3], [1, 2, 3], [1.5, 2.5])\n        [1.5, 2.5]\n\n        \"\"\"\n        result = []\n        for xi in x_interp:\n            # Find the bracketing indices\n            idx = 0\n            while idx < len(x) - 1 and x[idx] < xi:\n                idx += 1\n            if idx >= len(x) - 1:\n                # xi is beyond the range; extrapolate using the last segment\n                idx = len(x) - 2\n            x0, x1 = x[idx], x[idx + 1]\n            y0, y1 = y[idx], y[idx + 1]\n            if x1 == x0:\n                yi = y0\n            else:\n                yi = y0 + (y1 - y0) * (xi - x0) / (x1 - x0)\n            result.append(yi)\n        return result\n\n    @staticmethod\n    def interpolate_2d(x, y, z, x_interp, y_interp):\n        \"\"\"\n        Linear interpolation of two-dimensional data\n        :param x: The x-coordinate of the data point, list.\n        :param y: The y-coordinate of the data point, list.\n        :param z: The z-coordinate of the data point, list.\n        :param x_interp: The x-coordinate of the interpolation point, list.\n        :param y_interp: The y-coordinate of the interpolation point, list.\n        :return: The z-coordinate of the interpolation point, list.\n        >>> interpolation = Interpolation()\n        >>> interpolation.interpolate_2d([1, 2, 3], [1, 2, 3], [[1, 2, 3], [4, 5, 6], [7, 8, 9]], [1.5, 2.5], [1.5, 2.5])\n        [3.0, 7.0]\n\n        \"\"\"\n        result = []\n        # First, interpolate along x for each row\n        z_x = []\n        for row in z:\n            z_x.append(Interpolation.interpolate_1d(x, row, x_interp))\n        # Then, interpolate along y for each interpolated x\n        for i in range(len(x_interp)):\n            values = [z_x[j][i] for j in range(len(y))]\n            result.append(Interpolation.interpolate_1d(y, values, y_interp))\n        return result\n```",
+        "reasoning_chars": 1725,
+        "tool_calls": [],
+        "finish_reason": "stop",
+        "prompt_n": 4,
+        "predicted_n": 1068
+      }
+    ],
+    "predicted_n": 1068,
+    "prompt_n": 4,
+    "cached_n": 0,
+    "finish_reason": "stop",
+    "error": null
+  },
+  "verdict": {
+    "passed": false,
+    "tests_run": 13,
+    "failures": 11,
+    "test_classes": {
+      "InterpolationTestInterpolate1d": {
+        "testsRun": 7,
+        "failures": 4,
+        "errors": 1
+      },
+      "InterpolationTestInterpolate2d": {
+        "testsRun": 5,
+        "failures": 5,
+        "errors": 0
+      },
+      "InterpolationTestMain": {
+        "testsRun": 1,
+        "failures": 1,
+        "errors": 0
+      }
+    }
+  },
+  "finished_at": "2026-10-19T15:03:04Z"
+}

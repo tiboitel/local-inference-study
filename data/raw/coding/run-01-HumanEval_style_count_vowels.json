@@ -1,0 +1,43 @@
+{
+  "task_id": "HumanEval_style_count_vowels",
+  "run": 1,
+  "class_name": "count_vowels",
+  "source": "humaneval-style",
+  "wall_s": 5.921576976776123,
+  "extract_ok": true,
+  "code_chars": 308,
+  "loop": {
+    "answer": "```python\ndef count_vowels(s: str) -> int:\n    \"\"\"\n    Return the number of vowel characters (a, e, i, o, u, case-insensitive)\n    in the string ``s``.\n\n    >>> count_vowels(\"Hello World\")\n    3\n    >>> count_vowels(\"xyz\")\n    0\n    \"\"\"\n    vowels = set('aeiouAEIOU')\n    return sum(1 for char in s if char in vowels)\n```",
+    "calls": [],
+    "turns": 1,
+    "turn_log": [
+      {
+        "turn": 1,
+        "content": "```python\ndef count_vowels(s: str) -> int:\n    \"\"\"\n    Return the number of vowel characters (a, e, i, o, u, case-insensitive)\n    in the string ``s``.\n\n    >>> count_vowels(\"Hello World\")\n    3\n    >>> count_vowels(\"xyz\")\n    0\n    \"\"\"\n    vowels = set('aeiouAEIOU')\n    return sum(1 for char in s if char in vowels)\n```",
+        "reasoning_chars": 538,
+        "tool_calls": [],
+        "finish_reason": "stop",
+        "prompt_n": 121,
+        "predicted_n": 252
+      }
+    ],
+    "predicted_n": 252,
+    "prompt_n": 121,
+    "cached_n": 0,
+    "finish_reason": "stop",
+    "error": null
+  },
+  "verdict": {
+    "passed": true,
+    "tests_run": 4,
+    "failures": 0,
+    "test_classes": {
+      "CountVowelsTest": {
+        "testsRun": 4,
+        "failures": 0,
+        "errors": 0
+      }
+    }
+  },
+  "finished_at": "2026-10-19T14:55:32Z"
+}

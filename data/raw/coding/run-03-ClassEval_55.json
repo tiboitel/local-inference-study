@@ -1,0 +1,53 @@
+{
+  "task_id": "ClassEval_55",
+  "run": 3,
+  "class_name": "Manacher",
+  "source": "classeval",
+  "wall_s": 39.19445037841797,
+  "extract_ok": true,
+  "code_chars": 3095,
+  "loop": {
+    "answer": "```python\nclass Manacher:\n    \"\"\"\n    his is a class that implements a manacher algorithm to find the Longest palindromic substring in a given string.\n    \"\"\"\n\n    def __init__(self, input_string) -> None:\n        \"\"\"\n        Initializes the Manacher class with the given input_string.\n        :param input_string: The input_string to be searched, str.\n        \"\"\"\n        self.input_string = input_string\n\n    def palindromic_length(self, center, diff, string):\n        \"\"\"\n        Recursively calculates the length of the palindromic substring based on a given center, difference value, and input string.\n        :param center: The center of the palindromic substring, int.\n        :param diff: The difference between the center and the current position, int.\n        :param string: The string to be searched, str.\n        :return: The length of the palindromic substring, int.\n        >>> manacher = Manacher('ababa')\n        >>> manacher.palindromic_length(2, 1, 'a|b|a|b|a')\n        2\n\n        \"\"\"\n        if diff == 0:\n            if center < 0 or center >= len(string):\n                return 0\n            return 1 if string[center] != '|' else 0\n        if center - diff < 0 or center + diff >= len(string):\n            return 0\n        return (\n            2 + self.palindromic_length(center, diff - 1, string)\n            if string[center - diff] == string[center + diff]\n            else 0\n        )\n\n    def palindromic_string(self):\n        \"\"\"\n        Finds the longest palindromic substring in the given string.\n        :return: The longest palindromic substring, str.\n        >>> manacher = Manacher('ababaxse')\n        >>> manacher.palindromic_string()\n        'ababa'\n\n        \"\"\"\n        n = len(self.input_string)\n        if n == 0:\n            return \"\"\n\n        def odd_palindrome_length(center):\n            if center < 0 or center >= n:\n                return 0\n            if self.input_string[center] == \"\":\n                return 0\n            return 1 + self.palindromic_length(center, 1, self.input_string)\n\n        def even_palindrome_length(center):\n            if center < 0 or center >= n - 1:\n                return 0\n            if self.input_string[center] == \"\" or self.input_string[center + 1] == \"\":\n                return 0\n            return 2 + self.palindromic_length(center + 1, 1, self.input_string)\n\n        max_len = 0\n        best_center = 0\n\n        for i in range(n):\n            odd_len = odd_palindrome_length(i)\n            if odd_len > max_len:\n                max_len = odd_len\n                best_center = i\n\n            even_len = even_palindrome_length(i)\n            if even_len > max_len:\n                max_len = even_len\n                best_center = i\n\n        if max_len == 0:\n            return self.input_string[0] if n > 0 else \"\"\n\n        if max_len % 2 == 1:\n            return self.input_string[\n                best_center - max_len // 2 : best_center + max_len // 2 + 1\n            ]\n        else:\n            return self.input_string[\n                best_center - max_len // 2 + 1 : best_center + max_len // 2 + 1\n            ]\n```",
+    "calls": [],
+    "turns": 1,
+    "turn_log": [
+      {
+        "turn": 1,
+        "content": "```python\nclass Manacher:\n    \"\"\"\n    his is a class that implements a manacher algorithm to find the Longest palindromic substring in a given string.\n    \"\"\"\n\n    def __init__(self, input_string) -> None:\n        \"\"\"\n        Initializes the Manacher class with the given input_string.\n        :param input_string: The input_string to be searched, str.\n        \"\"\"\n        self.input_string = input_string\n\n    def palindromic_length(self, center, diff, string):\n        \"\"\"\n        Recursively calculates the length of the palindromic substring based on a given center, difference value, and input string.\n        :param center: The center of the palindromic substring, int.\n        :param diff: The difference between the center and the current position, int.\n        :param string: The string to be searched, str.\n        :return: The length of the palindromic substring, int.\n        >>> manacher = Manacher('ababa')\n        >>> manacher.palindromic_length(2, 1, 'a|b|a|b|a')\n        2\n\n        \"\"\"\n        if diff == 0:\n            if center < 0 or center >= len(string):\n                return 0\n            return 1 if string[center] != '|' else 0\n        if center - diff < 0 or center + diff >= len(string):\n            return 0\n        return (\n            2 + self.palindromic_length(center, diff - 1, string)\n            if string[center - diff] == string[center + diff]\n            else 0\n        )\n\n    def palindromic_string(self):\n        \"\"\"\n        Finds the longest palindromic substring in the given string.\n        :return: The longest palindromic substring, str.\n        >>> manacher = Manacher('ababaxse')\n        >>> manacher.palindromic_string()\n        'ababa'\n\n        \"\"\"\n        n = len(self.input_string)\n        if n == 0:\n            return \"\"\n\n        def odd_palindrome_length(center):\n            if center < 0 or center >= n:\n                return 0\n            if self.input_string[center] == \"\":\n                return 0\n            return 1 + self.palindromic_length(center, 1, self.input_string)\n\n        def even_palindrome_length(center):\n            if center < 0 or center >= n - 1:\n                return 0\n            if self.input_string[center] == \"\" or self.input_string[center + 1] == \"\":\n                return 0\n            return 2 + self.palindromic_length(center + 1, 1, self.input_string)\n\n        max_len = 0\n        best_center = 0\n\n        for i in range(n):\n            odd_len = odd_palindrome_length(i)\n            if odd_len > max_len:\n                max_len = odd_len\n                best_center = i\n\n            even_len = even_palindrome_length(i)\n            if even_len > max_len:\n                max_len = even_len\n                best_center = i\n\n        if max_len == 0:\n            return self.input_string[0] if n > 0 else \"\"\n\n        if max_len % 2 == 1:\n            return self.input_string[\n                best_center - max_len // 2 : best_center + max_len // 2 + 1\n            ]\n        else:\n            return self.input_string[\n                best_center - max_len // 2 + 1 : best_center + max_len // 2 + 1\n            ]\n```",
+        "reasoning_chars": 5246,
+        "tool_calls": [],
+        "finish_reason": "stop",
+        "prompt_n": 4,
+        "predicted_n": 1849
+      }
+    ],
+    "predicted_n": 1849,
+    "prompt_n": 4,
+    "cached_n": 0,
+    "finish_reason": "stop",
+    "error": null
+  },
+  "verdict": {
+    "passed": false,
+    "tests_run": 11,
+    "failures": 9,
+    "test_classes": {
+      "ManacherTestPalindromicLength": {
+        "testsRun": 5,
+        "failures": 3,
+        "errors": 0
+      },
+      "ManacherTestPalindromicString": {
+        "testsRun": 5,
+        "failures": 5,
+        "errors": 0
+      },
+      "ManacherTestMain": {
+        "testsRun": 1,
+        "failures": 1,
+        "errors": 0
+      }
+    }
+  },
+  "finished_at": "2026-10-19T15:02:27Z"
+}

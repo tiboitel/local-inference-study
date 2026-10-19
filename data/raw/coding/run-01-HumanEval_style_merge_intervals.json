@@ -1,0 +1,43 @@
+{
+  "task_id": "HumanEval_style_merge_intervals",
+  "run": 1,
+  "class_name": "merge_intervals",
+  "source": "humaneval-style",
+  "wall_s": 6.074567079544067,
+  "extract_ok": true,
+  "code_chars": 910,
+  "loop": {
+    "answer": "```python\ndef merge_intervals(intervals):\n    \"\"\"\n    Merge overlapping closed intervals and return them sorted by start.\n    Each interval is a tuple/list ``(start, end)`` with start <= end.\n\n    >>> merge_intervals([(1, 3), (2, 6), (8, 10)])\n    [(1, 6), (8, 10)]\n    \"\"\"\n    if not intervals:\n        return []\n\n    # Sort by start time\n    sorted_intervals = sorted(intervals, key=lambda x: x[0])\n\n    merged = []\n    current_start, current_end = sorted_intervals[0]\n\n    for start, end in sorted_intervals[1:]:\n        if start <= current_end:\n            # Overlapping or touching \u2014 merge\n            current_end = max(current_end, end)\n        else:\n            # Non-overlapping \u2014 push current and start new\n            merged.append((current_start, current_end))\n            current_start, current_end = start, end\n\n    # Push the last interval\n    merged.append((current_start, current_end))\n    return merged\n```",
+    "calls": [],
+    "turns": 1,
+    "turn_log": [
+      {
+        "turn": 1,
+        "content": "```python\ndef merge_intervals(intervals):\n    \"\"\"\n    Merge overlapping closed intervals and return them sorted by start.\n    Each interval is a tuple/list ``(start, end)`` with start <= end.\n\n    >>> merge_intervals([(1, 3), (2, 6), (8, 10)])\n    [(1, 6), (8, 10)]\n    \"\"\"\n    if not intervals:\n        return []\n\n    # Sort by start time\n    sorted_intervals = sorted(intervals, key=lambda x: x[0])\n\n    merged = []\n    current_start, current_end = sorted_intervals[0]\n\n    for start, end in sorted_intervals[1:]:\n        if start <= current_end:\n            # Overlapping or touching \u2014 merge\n            current_end = max(current_end, end)\n        else:\n            # Non-overlapping \u2014 push current and start new\n            merged.append((current_start, current_end))\n            current_start, current_end = start, end\n\n    # Push the last interval\n    merged.append((current_start, current_end))\n    return merged\n```",
+        "reasoning_chars": 203,
+        "tool_calls": [],
+        "finish_reason": "stop",
+        "prompt_n": 125,
+        "predicted_n": 283
+      }
+    ],
+    "predicted_n": 283,
+    "prompt_n": 125,
+    "cached_n": 0,
+    "finish_reason": "stop",
+    "error": null
+  },
+  "verdict": {
+    "passed": true,
+    "tests_run": 4,
+    "failures": 0,
+    "test_classes": {
+      "MergeIntervalsTest": {
+        "testsRun": 4,
+        "failures": 0,
+        "errors": 0
+      }
+    }
+  },
+  "finished_at": "2026-10-19T14:56:20Z"
+}

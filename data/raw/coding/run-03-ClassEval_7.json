@@ -1,0 +1,53 @@
+{
+  "task_id": "ClassEval_7",
+  "run": 3,
+  "class_name": "BalancedBrackets",
+  "source": "classeval",
+  "wall_s": 11.328308343887329,
+  "extract_ok": true,
+  "code_chars": 1643,
+  "loop": {
+    "answer": "```python\nclass BalancedBrackets:\n    \"\"\"\n    This is a class that checks for bracket matching\n    \"\"\"\n\n    def __init__(self, expr):\n        \"\"\"\n        Initializes the class with an expression.\n        :param expr: The expression to check for balanced brackets,str.\n        \"\"\"\n        self.stack = []\n        self.left_brackets = [\"(\", \"{\", \"[\"]\n        self.right_brackets = [\")\", \"}\", \"]\"]\n        self.expr = expr\n\n    def clear_expr(self):\n        \"\"\"\n        Clears the expression of all characters that are not brackets.\n        >>> b = BalancedBrackets(\"a(b)c\")\n        >>> b.clear_expr()\n        >>> b.expr\n        '()'\n\n        \"\"\"\n        self.expr = ''.join(char for char in self.expr if char in self.left_brackets or char in self.right_brackets)\n\n    def check_balanced_brackets(self):\n        \"\"\"\n        Checks if the expression has balanced brackets.\n        :return: True if the expression has balanced brackets, False otherwise.\n        >>> b = BalancedBrackets(\"a(b)c\")\n        >>> b.check_balanced_brackets()\n        True\n\n        \"\"\"\n        self.clear_expr()\n        for char in self.expr:\n            if char in self.left_brackets:\n                self.stack.append(char)\n            elif char in self.right_brackets:\n                if not self.stack:\n                    return False\n                if char == ')' and self.stack[-1] != '(':\n                    return False\n                if char == '}' and self.stack[-1] != '{':\n                    return False\n                if char == ']' and self.stack[-1] != '[':\n                    return False\n                self.stack.pop()\n        return len(self.stack) == 0\n```",
+    "calls": [],
+    "turns": 1,
+    "turn_log": [
+      {
+        "turn": 1,
+        "content": "```python\nclass BalancedBrackets:\n    \"\"\"\n    This is a class that checks for bracket matching\n    \"\"\"\n\n    def __init__(self, expr):\n        \"\"\"\n        Initializes the class with an expression.\n        :param expr: The expression to check for balanced brackets,str.\n        \"\"\"\n        self.stack = []\n        self.left_brackets = [\"(\", \"{\", \"[\"]\n        self.right_brackets = [\")\", \"}\", \"]\"]\n        self.expr = expr\n\n    def clear_expr(self):\n        \"\"\"\n        Clears the expression of all characters that are not brackets.\n        >>> b = BalancedBrackets(\"a(b)c\")\n        >>> b.clear_expr()\n        >>> b.expr\n        '()'\n\n        \"\"\"\n        self.expr = ''.join(char for char in self.expr if char in self.left_brackets or char in self.right_brackets)\n\n    def check_balanced_brackets(self):\n        \"\"\"\n        Checks if the expression has balanced brackets.\n        :return: True if the expression has balanced brackets, False otherwise.\n        >>> b = BalancedBrackets(\"a(b)c\")\n        >>> b.check_balanced_brackets()\n        True\n\n        \"\"\"\n        self.clear_expr()\n        for char in self.expr:\n            if char in self.left_brackets:\n                self.stack.append(char)\n            elif char in self.right_brackets:\n                if not self.stack:\n                    return False\n                if char == ')' and self.stack[-1] != '(':\n                    return False\n                if char == '}' and self.stack[-1] != '{':\n                    return False\n                if char == ']' and self.stack[-1] != '[':\n                    return False\n                self.stack.pop()\n        return len(self.stack) == 0\n```",
+        "reasoning_chars": 928,
+        "tool_calls": [],
+        "finish_reason": "stop",
+        "prompt_n": 4,
+        "predicted_n": 609
+      }
+    ],
+    "predicted_n": 609,
+    "prompt_n": 4,
+    "cached_n": 0,
+    "finish_reason": "stop",
+    "error": null
+  },
+  "verdict": {
+    "passed": true,
+    "tests_run": 15,
+    "failures": 0,
+    "test_classes": {
+      "BalancedBracketsTestClearExpr": {
+        "testsRun": 5,
+        "failures": 0,
+        "errors": 0
+      },
+      "BalancedBracketsTestCheckBalancedBrackets": {
+        "testsRun": 7,
+        "failures": 0,
+        "errors": 0
+      },
+      "BalancedBracketsTestMain": {
+        "testsRun": 3,
+        "failures": 0,
+        "errors": 0
+      }
+    }
+  },
+  "finished_at": "2026-10-19T15:00:38Z"
+}

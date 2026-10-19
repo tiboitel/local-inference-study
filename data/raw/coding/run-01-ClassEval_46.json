@@ -1,0 +1,53 @@
+{
+  "task_id": "ClassEval_46",
+  "run": 1,
+  "class_name": "Interpolation",
+  "source": "classeval",
+  "wall_s": 43.82878613471985,
+  "extract_ok": true,
+  "code_chars": 3501,
+  "loop": {
+    "answer": "```python\nclass Interpolation:\n    \"\"\"\n    This is a class that implements the Linear interpolation operation of one-dimensional and two-dimensional data\n    \"\"\"\n\n    def __init__(self):\n        pass\n\n    @staticmethod\n    def interpolate_1d(x, y, x_interp):\n        \"\"\"\n        Linear interpolation of one-dimensional data\n        :param x: The x-coordinate of the data point, list.\n        :param y: The y-coordinate of the data point, list.\n        :param x_interp: The x-coordinate of the interpolation point, list.\n        :return: The y-coordinate of the interpolation point, list.\n        >>> interpolation = Interpolation()\n        >>> interpolation.interpolate_1d([1, 2, 3], [1, 2, 3], [1.5, 2.5])\n        [1.5, 2.5]\n\n        \"\"\"\n        x = list(x)\n        y = list(y)\n        x_interp = list(x_interp)\n\n        result = []\n        for xi in x_interp:\n            # Clamp to valid index range\n            idx = min(max(int((xi - x[0]) / (x[1] - x[0])) if x[1] != x[0] else 0, 0), len(x) - 2)\n            # Handle edge case when xi is exactly at the last grid point\n            if xi >= x[-1] and idx == len(x) - 2:\n                if xi == x[-1]:\n                    idx = len(x) - 2\n                else:\n                    idx = len(x) - 2\n            # Fallback: clamp idx to be within [0, len(x)-2]\n            idx = max(0, min(idx, len(x) - 2))\n\n            x0, x1 = x[idx], x[idx + 1]\n            y0, y1 = y[idx], y[idx + 1]\n            if x1 == x0:\n                yi = y0\n            else:\n                yi = y0 + (y1 - y0) * (xi - x0) / (x1 - x0)\n            result.append(yi)\n        return result\n\n    @staticmethod\n    def interpolate_2d(x, y, z, x_interp, y_interp):\n        \"\"\"\n        Linear interpolation of two-dimensional data\n        :param x: The x-coordinate of the data point, list.\n        :param y: The y-coordinate of the data point, list.\n        :param z: The z-coordinate of the data point, list.\n        :param x_interp: The x-coordinate of the interpolation point, list.\n        :param y_interp: The y-coordinate of the interpolation point, list.\n        :return: The z-coordinate of the interpolation point, list.\n        >>> interpolation = Interpolation()\n        >>> interpolation.interpolate_2d([1, 2, 3], [1, 2, 3], [[1, 2, 3], [4, 5, 6], [7, 8, 9]], [1.5, 2.5], [1.5, 2.5])\n        [3.0, 7.0]\n\n        \"\"\"\n        x = list(x)\n        y = list(y)\n        z = list(z)\n        x_interp = list(x_interp)\n        y_interp = list(y_interp)\n\n        result = []\n        for xi, yi in zip(x_interp, y_interp):\n            # Clamp xi and yi to valid index ranges\n            idx_x = min(max(int((xi - x[0]) / (x[1] - x[0])) if x[1] != x[0] else 0, 0), len(x) - 2)\n            idx_y = min(max(int((yi - y[0]) / (y[1] - y[0])) if y[1] != y[0] else 0, 0), len(y) - 2)\n\n            xi = x[idx_x]\n            xj = x[idx_x + 1]\n            yi = y[idx_y]\n            yj = y[idx_y + 1]\n\n            # Bilinear interpolation\n            if xj == xi or yj == yi:\n                zi = z[idx_x][idx_y]\n            else:\n                # Interpolate in x direction for both rows\n                z_x0 = z[idx_x][idx_y] + (z[idx_x][idx_y + 1] - z[idx_x][idx_y]) * (xi - x[idx_x]) / (xj - xi)\n                z_x1 = z[idx_x + 1][idx_y] + (z[idx_x + 1][idx_y + 1] - z[idx_x + 1][idx_y]) * (xi - x[idx_x]) / (xj - xi)\n                # Interpolate in y direction\n                zi = z_x0 + (z_x1 - z_x0) * (yi - y[idx_y]) / (yj - yi)\n            result.append(zi)\n        return result\n```",
+    "calls": [],
+    "turns": 1,
+    "turn_log": [
+      {
+        "turn": 1,
+        "content": "```python\nclass Interpolation:\n    \"\"\"\n    This is a class that implements the Linear interpolation operation of one-dimensional and two-dimensional data\n    \"\"\"\n\n    def __init__(self):\n        pass\n\n    @staticmethod\n    def interpolate_1d(x, y, x_interp):\n        \"\"\"\n        Linear interpolation of one-dimensional data\n        :param x: The x-coordinate of the data point, list.\n        :param y: The y-coordinate of the data point, list.\n        :param x_interp: The x-coordinate of the interpolation point, list.\n        :return: The y-coordinate of the interpolation point, list.\n        >>> interpolation = Interpolation()\n        >>> interpolation.interpolate_1d([1, 2, 3], [1, 2, 3], [1.5, 2.5])\n        [1.5, 2.5]\n\n        \"\"\"\n        x = list(x)\n        y = list(y)\n        x_interp = list(x_interp)\n\n        result = []\n        for xi in x_interp:\n            # Clamp to valid index range\n            idx = min(max(int((xi - x[0]) / (x[1] - x[0])) if x[1] != x[0] else 0, 0), len(x) - 2)\n            # Handle edge case when xi is exactly at the last grid point\n            if xi >= x[-1] and idx == len(x) - 2:\n                if xi == x[-1]:\n                    idx = len(x) - 2\n                else:\n                    idx = len(x) - 2\n            # Fallback: clamp idx to be within [0, len(x)-2]\n            idx = max(0, min(idx, len(x) - 2))\n\n            x0, x1 = x[idx], x[idx + 1]\n            y0, y1 = y[idx], y[idx + 1]\n            if x1 == x0:\n                yi = y0\n            else:\n                yi = y0 + (y1 - y0) * (xi - x0) / (x1 - x0)\n            result.append(yi)\n        return result\n\n    @staticmethod\n    def interpolate_2d(x, y, z, x_interp, y_interp):\n        \"\"\"\n        Linear interpolation of two-dimensional data\n        :param x: The x-coordinate of the data point, list.\n        :param y: The y-coordinate of the data point, list.\n        :param z: The z-coordinate of the data point, list.\n        :param x_interp: The x-coordinate of the interpolation point, list.\n        :param y_interp: The y-coordinate of the interpolation point, list.\n        :return: The z-coordinate of the interpolation point, list.\n        >>> interpolation = Interpolation()\n        >>> interpolation.interpolate_2d([1, 2, 3], [1, 2, 3], [[1, 2, 3], [4, 5, 6], [7, 8, 9]], [1.5, 2.5], [1.5, 2.5])\n        [3.0, 7.0]\n\n        \"\"\"\n        x = list(x)\n        y = list(y)\n        z = list(z)\n        x_interp = list(x_interp)\n        y_interp = list(y_interp)\n\n        result = []\n        for xi, yi in zip(x_interp, y_interp):\n            # Clamp xi and yi to valid index ranges\n            idx_x = min(max(int((xi - x[0]) / (x[1] - x[0])) if x[1] != x[0] else 0, 0), len(x) - 2)\n            idx_y = min(max(int((yi - y[0]) / (y[1] - y[0])) if y[1] != y[0] else 0, 0), len(y) - 2)\n\n            xi = x[idx_x]\n            xj = x[idx_x + 1]\n            yi = y[idx_y]\n            yj = y[idx_y + 1]\n\n            # Bilinear interpolation\n            if xj == xi or yj == yi:\n                zi = z[idx_x][idx_y]\n            else:\n                # Interpolate in x direction for both rows\n                z_x0 = z[idx_x][idx_y] + (z[idx_x][idx_y + 1] - z[idx_x][idx_y]) * (xi - x[idx_x]) / (xj - xi)\n                z_x1 = z[idx_x + 1][idx_y] + (z[idx_x + 1][idx_y + 1] - z[idx_x + 1][idx_y]) * (xi - x[idx_x]) / (xj - xi)\n                # Interpolate in y direction\n                zi = z_x0 + (z_x1 - z_x0) * (yi - y[idx_y]) / (yj - yi)\n            result.append(zi)\n        return result\n```",
+        "reasoning_chars": 5227,
+        "tool_calls": [],
+        "finish_reason": "stop",
+        "prompt_n": 465,
+        "predicted_n": 2158
+      }
+    ],
+    "predicted_n": 2158,
+    "prompt_n": 465,
+    "cached_n": 0,
+    "finish_reason": "stop",
+    "error": null
+  },
+  "verdict": {
+    "passed": false,
+    "tests_run": 13,
+    "failures": 7,
+    "test_classes": {
+      "InterpolationTestInterpolate1d": {
+        "testsRun": 7,
+        "failures": 0,
+        "errors": 1
+      },
+      "InterpolationTestInterpolate2d": {
+        "testsRun": 5,
+        "failures": 5,
+        "errors": 0
+      },
+      "InterpolationTestMain": {
+        "testsRun": 1,
+        "failures": 1,
+        "errors": 0
+      }
+    }
+  },
+  "finished_at": "2026-10-19T14:54:51Z"
+}

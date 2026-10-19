@@ -34,6 +34,18 @@ def sem(xs):
     return statistics.stdev(xs) / math.sqrt(len(xs))
 
 
+# two-sided 95% Student-t critical values by degrees of freedom (n - 1)
+_T95 = {1: 12.706, 2: 4.303, 3: 3.182, 4: 2.776, 5: 2.571, 6: 2.447,
+        7: 2.365, 8: 2.306, 9: 2.262, 10: 2.228, 11: 2.201, 12: 2.179,
+        13: 2.160, 14: 2.145, 15: 2.131, 16: 2.120, 17: 2.110, 18: 2.101,
+        19: 2.093, 20: 2.086}
+
+
+def t95(n: int) -> float:
+    """Two-sided 95% interval multiplier for n samples (z fallback off-table)."""
+    return _T95.get(n - 1, 1.96)
+
+
 def wilson(k: int, n: int, z: float = 1.96):
     if n == 0:
         return (None, None)
@@ -99,7 +111,7 @@ def build_mtp(raw: Path, out: Path):
             "pp_sem": round(sem([r["pp_t_s"] for r in rs]), 2),
             "tg_mean": round(mean([r["tg_t_s"] for r in rs]), 2),
             "tg_sem": round(tg_sem, 2),
-            "tg_ci95": round(1.96 * tg_sem, 2) if tg_sem else None,
+            "tg_ci95": round(t95(len(rs)) * tg_sem, 2) if tg_sem else None,
             "accept_mean": (lambda m: round(m, 3) if m is not None else None)(
                 mean([r["accept"] for r in rs])),
             "accept_sd": (round(statistics.stdev([r["accept"] for r in rs if r["accept"] is not None]), 3)
@@ -118,10 +130,16 @@ def build_mtp(raw: Path, out: Path):
 def build_ncmoe_probe(raw: Path, out: Path):
     text = (raw / "p4" / "probe-results.txt").read_text()
     status = {}
+    oom_field = {}
     for line in text.splitlines():
         if line.startswith("PROBE_") and "=" in line and line.split("=")[0].count("_") == 1:
             k, v = line.split("=", 1)
             status[k.replace("PROBE_", "")] = v
+        elif line.startswith("OOM_") and "=" in line:
+            # sanitized raw carries the OOM evidence directly, so the published
+            # repo does not depend on the untracked *.log files
+            k, v = line.split("=", 1)
+            oom_field[k.replace("OOM_", "")] = v
     cfgmap = {
         "ref20": ("20", "on"),
         "cand17": ("17", "on"),
@@ -130,8 +148,8 @@ def build_ncmoe_probe(raw: Path, out: Path):
     rows = []
     for cfg, (ncmoe, cache) in cfgmap.items():
         st = status.get(cfg, "?")
-        oom = ""
-        if st.startswith("FAIL"):
+        oom = oom_field.get(cfg, "")
+        if not oom and st.startswith("FAIL"):
             log = raw / "p4" / f"server-{cfg}-b0.log"
             if log.exists():
                 for ln in log.read_text(errors="replace").splitlines():

@@ -133,7 +133,7 @@ model verifies. A protocol-faithful on/off A/B at 64k (*live 29B MTP profile*):
 | Kept runs | 10 | 10 | — |
 | Prompt tokens (mean) | 57,881 | 57,880 | — |
 | Deep decode (TG) | 14.79 t/s | **38.56 t/s** | **+23.77 (+160.7%)** |
-| TG SEM / 95% CI | 0.38 / ±0.74 | 1.99 / ±3.90 | ±4.58 |
+| TG SEM / 95% CI (t, n=10) | 0.38 / ±0.86 | 1.99 / ±4.50 | ±4.58 |
 | Prefill (PP) | 645.10 t/s | 637.39 t/s | −1.19% (inside noise) |
 | MTP acceptance | — | 0.838 (sd 0.070) | — |
 | Peak VRAM | 10,595 MiB | 11,588 MiB | **+993 MiB** |
@@ -165,8 +165,8 @@ speculation flag differed. So **+160.7% is the best validated result for this
 exact configuration, not a universal MTP speedup** — acceptance is content-driven,
 and a different corpus will move the mean and the variance.
 
-The optimum is `n-max=2`. Higher draft counts did not help and lower ones leave
-throughput on the table; the sweep is in the raw evidence.
+The tested point is `n-max=2`. The published evidence covers only that value, so
+this study does not claim it is the optimum over other draft counts.
 
 ## 6. TurboQuant: theory vs implementation
 

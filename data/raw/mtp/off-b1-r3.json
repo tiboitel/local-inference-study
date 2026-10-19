@@ -1,0 +1,22 @@
+{
+  "nonce": "23db3a8d9c1e4d52ae1b37fbd538c3ff",
+  "wall_s": 95.11864233016968,
+  "peaks": {
+    "vram_mib": 10490.0,
+    "ram_used_mib": 15332.23046875
+  },
+  "final_text": "The incident reference logged during the GPU cache flush is **HX-7741-QXZ**, as recorded in entry 0700.",
+  "timings": {
+    "cache_n": 0,
+    "prompt_n": 57881,
+    "prompt_ms": 90305.799,
+    "prompt_per_token_ms": 1.5601976296193916,
+    "prompt_per_second": 640.9444425601063,
+    "predicted_n": 60,
+    "predicted_ms": 4041.171,
+    "predicted_per_token_ms": 67.35285,
+    "predicted_per_second": 14.847181670857285
+  },
+  "finish_reason": "stop",
+  "usage": {}
+}

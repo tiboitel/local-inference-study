@@ -1,0 +1,43 @@
+{
+  "task_id": "HumanEval_style_merge_intervals",
+  "run": 3,
+  "class_name": "merge_intervals",
+  "source": "humaneval-style",
+  "wall_s": 6.070875883102417,
+  "extract_ok": true,
+  "code_chars": 827,
+  "loop": {
+    "answer": "```python\ndef merge_intervals(intervals):\n    \"\"\"\n    Merge overlapping closed intervals and return them sorted by start.\n    Each interval is a tuple/list ``(start, end)`` with start <= end.\n\n    >>> merge_intervals([(1, 3), (2, 6), (8, 10)])\n    [(1, 6), (8, 10)]\n    \"\"\"\n    if not intervals:\n        return []\n\n    # Sort by start time, then by end time\n    sorted_intervals = sorted(intervals, key=lambda x: (x[0], x[1]))\n\n    merged = [list(sorted_intervals[0])]\n\n    for start, end in sorted_intervals[1:]:\n        last_start, last_end = merged[-1]\n        if start <= last_end:\n            # Overlapping or adjacent \u2014 merge\n            merged[-1][1] = max(last_end, end)\n        else:\n            merged.append([start, end])\n\n    # Return as list of tuples for consistency with the example\n    return [(s, e) for s, e in merged]\n```",
+    "calls": [],
+    "turns": 1,
+    "turn_log": [
+      {
+        "turn": 1,
+        "content": "```python\ndef merge_intervals(intervals):\n    \"\"\"\n    Merge overlapping closed intervals and return them sorted by start.\n    Each interval is a tuple/list ``(start, end)`` with start <= end.\n\n    >>> merge_intervals([(1, 3), (2, 6), (8, 10)])\n    [(1, 6), (8, 10)]\n    \"\"\"\n    if not intervals:\n        return []\n\n    # Sort by start time, then by end time\n    sorted_intervals = sorted(intervals, key=lambda x: (x[0], x[1]))\n\n    merged = [list(sorted_intervals[0])]\n\n    for start, end in sorted_intervals[1:]:\n        last_start, last_end = merged[-1]\n        if start <= last_end:\n            # Overlapping or adjacent \u2014 merge\n            merged[-1][1] = max(last_end, end)\n        else:\n            merged.append([start, end])\n\n    # Return as list of tuples for consistency with the example\n    return [(s, e) for s, e in merged]\n```",
+        "reasoning_chars": 185,
+        "tool_calls": [],
+        "finish_reason": "stop",
+        "prompt_n": 125,
+        "predicted_n": 279
+      }
+    ],
+    "predicted_n": 279,
+    "prompt_n": 125,
+    "cached_n": 0,
+    "finish_reason": "stop",
+    "error": null
+  },
+  "verdict": {
+    "passed": true,
+    "tests_run": 4,
+    "failures": 0,
+    "test_classes": {
+      "MergeIntervalsTest": {
+        "testsRun": 4,
+        "failures": 0,
+        "errors": 0
+      }
+    }
+  },
+  "finished_at": "2026-10-19T15:03:11Z"
+}

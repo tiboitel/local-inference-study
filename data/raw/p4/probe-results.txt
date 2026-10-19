@@ -1,0 +1,31 @@
+=== probes 2026-10-19T14:11:28Z ===
+--- ref20 ---
+ready; config=ref20 tools=1
+{
+  "config": "ref20",
+  "block": 0,
+  "kept": 0,
+  "attempts": 0,
+  "failures": [],
+  "finished_at": "2026-10-19T14:13:04Z"
+}
+PROBE_ref20=OK
+--- cand17 ---
+Traceback (most recent call last):
+  File "run_config.py", line 221, in <module>
+    main()
+  File "run_config.py", line 160, in main
+    raise RuntimeError("server did not become ready")
+RuntimeError: server did not become ready
+PROBE_cand17=FAIL rc=1
+OOM_cand17=ggml_backend_cuda_buffer_type_alloc_buffer: allocating 128.00 MiB on device 0: cudaMalloc failed: out of memory
+--- ctrl17off ---
+Traceback (most recent call last):
+  File "run_config.py", line 221, in <module>
+    main()
+  File "run_config.py", line 160, in main
+    raise RuntimeError("server did not become ready")
+RuntimeError: server did not become ready
+PROBE_ctrl17off=FAIL rc=1
+OOM_ctrl17off=ggml_backend_cuda_buffer_type_alloc_buffer: allocating 208.03 MiB on device 0: cudaMalloc failed: out of memory
+PROBE_DONE 2026-10-19T14:25:06Z

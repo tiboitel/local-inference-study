@@ -1,0 +1,53 @@
+{
+  "task_id": "ClassEval_7",
+  "run": 2,
+  "class_name": "BalancedBrackets",
+  "source": "classeval",
+  "wall_s": 27.162442445755005,
+  "extract_ok": true,
+  "code_chars": 1989,
+  "loop": {
+    "answer": "```python\nclass BalancedBrackets:\n    \"\"\"\n    This is a class that checks for bracket matching\n    \"\"\"\n\n    def __init__(self, expr):\n        \"\"\"\n        Initializes the class with an expression.\n        :param expr: The expression to check for balanced brackets,str.\n        \"\"\"\n        self.stack = []\n        self.left_brackets = [\"(\", \"{\", \"[\"]\n        self.right_brackets = [\")\", \"}\", \"]\"]\n        self.expr = expr\n\n    def clear_expr(self):\n        \"\"\"\n        Clears the expression of all characters that are not brackets.\n        >>> b = BalancedBrackets(\"a(b)c\")\n        >>> b.clear_expr()\n        >>> b.expr\n        '()'\n\n        \"\"\"\n        # Create a set of all bracket characters for efficient lookup\n        brackets = set(self.left_brackets + self.right_brackets)\n        # Filter the expression to keep only bracket characters\n        self.expr = ''.join(char for char in self.expr if char in brackets)\n\n    def check_balanced_brackets(self):\n        \"\"\"\n        Checks if the expression has balanced brackets.\n        :return: True if the expression has balanced brackets, False otherwise.\n        >>> b = BalancedBrackets(\"a(b)c\")\n        >>> b.check_balanced_brackets()\n        True\n\n        \"\"\"\n        # Create a mapping from right bracket to its corresponding left bracket\n        bracket_map = {\n            ')': '(',\n            '}': '{',\n            ']': '['\n        }\n        \n        for char in self.expr:\n            if char in self.left_brackets:\n                # Push left bracket onto the stack\n                self.stack.append(char)\n            elif char in self.right_brackets:\n                # If stack is empty, there's no matching left bracket\n                if not self.stack:\n                    return False\n                # Pop the top element and check if it matches\n                if self.stack.pop() != bracket_map[char]:\n                    return False\n        \n        # All brackets should be matched (stack should be empty)\n        return len(self.stack) == 0\n```",
+    "calls": [],
+    "turns": 1,
+    "turn_log": [
+      {
+        "turn": 1,
+        "content": "```python\nclass BalancedBrackets:\n    \"\"\"\n    This is a class that checks for bracket matching\n    \"\"\"\n\n    def __init__(self, expr):\n        \"\"\"\n        Initializes the class with an expression.\n        :param expr: The expression to check for balanced brackets,str.\n        \"\"\"\n        self.stack = []\n        self.left_brackets = [\"(\", \"{\", \"[\"]\n        self.right_brackets = [\")\", \"}\", \"]\"]\n        self.expr = expr\n\n    def clear_expr(self):\n        \"\"\"\n        Clears the expression of all characters that are not brackets.\n        >>> b = BalancedBrackets(\"a(b)c\")\n        >>> b.clear_expr()\n        >>> b.expr\n        '()'\n\n        \"\"\"\n        # Create a set of all bracket characters for efficient lookup\n        brackets = set(self.left_brackets + self.right_brackets)\n        # Filter the expression to keep only bracket characters\n        self.expr = ''.join(char for char in self.expr if char in brackets)\n\n    def check_balanced_brackets(self):\n        \"\"\"\n        Checks if the expression has balanced brackets.\n        :return: True if the expression has balanced brackets, False otherwise.\n        >>> b = BalancedBrackets(\"a(b)c\")\n        >>> b.check_balanced_brackets()\n        True\n\n        \"\"\"\n        # Create a mapping from right bracket to its corresponding left bracket\n        bracket_map = {\n            ')': '(',\n            '}': '{',\n            ']': '['\n        }\n        \n        for char in self.expr:\n            if char in self.left_brackets:\n                # Push left bracket onto the stack\n                self.stack.append(char)\n            elif char in self.right_brackets:\n                # If stack is empty, there's no matching left bracket\n                if not self.stack:\n                    return False\n                # Pop the top element and check if it matches\n                if self.stack.pop() != bracket_map[char]:\n                    return False\n        \n        # All brackets should be matched (stack should be empty)\n        return len(self.stack) == 0\n```",
+        "reasoning_chars": 3681,
+        "tool_calls": [],
+        "finish_reason": "stop",
+        "prompt_n": 4,
+        "predicted_n": 1295
+      }
+    ],
+    "predicted_n": 1295,
+    "prompt_n": 4,
+    "cached_n": 0,
+    "finish_reason": "stop",
+    "error": null
+  },
+  "verdict": {
+    "passed": true,
+    "tests_run": 15,
+    "failures": 0,
+    "test_classes": {
+      "BalancedBracketsTestClearExpr": {
+        "testsRun": 5,
+        "failures": 0,
+        "errors": 0
+      },
+      "BalancedBracketsTestCheckBalancedBrackets": {
+        "testsRun": 7,
+        "failures": 0,
+        "errors": 0
+      },
+      "BalancedBracketsTestMain": {
+        "testsRun": 3,
+        "failures": 0,
+        "errors": 0
+      }
+    }
+  },
+  "finished_at": "2026-10-19T14:58:19Z"
+}

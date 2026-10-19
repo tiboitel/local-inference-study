@@ -7,8 +7,9 @@ argued away at release time.
 ## The gate
 
 - [ ] **No secrets.** No API keys, tokens, passwords, private keys, credential
-      file paths, or `.env` contents. Grep before every commit:
-      `grep -rIiE 'api[-_]?key|token|secret|password|BEGIN .*PRIVATE KEY' .`
+      file paths, or `.env` contents. Run `bash scripts/check_hygiene.sh` before
+      every commit. Do not grep for `token` alone — it matches ordinary prose
+      like "token generation".
 - [ ] **No internal host paths.** No `/home/<user>/...`, no internal hostnames,
       no tailnet names, no LAN IPs. Public text says "the host", "the GPU",
       "12 GB", never an absolute path or a machine name.
@@ -28,7 +29,7 @@ argued away at release time.
 ## Where the gate is enforced
 
 1. `scripts/check_traceability.py` — every figure cell resolves to a source.
-2. A pre-commit shell check for secrets/absolute paths.
+2. `scripts/check_hygiene.sh` — secrets and absolute-path scan.
 3. A human read of `ARTICLE.md` and `README.md` for internal detail that survived
    the automated pass.
 

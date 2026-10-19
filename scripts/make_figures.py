@@ -100,7 +100,7 @@ def fig_coding():
               for x in rate]
     fig, ax = plt.subplots(figsize=(8.5, 4.4))
     ax.barh(labels, rate, color=colors)
-    ax.set_xlim(0, 1.05); ax.set_xlabel("runs passed (of 3)")
+    ax.set_xlim(0, 1.05); ax.set_xlabel("share of runs passed")
     ov = load("coding_overall.csv")[0]
     ax.axvline(f(ov["pass_rate"]), color="k", ls="--", lw=1,
                label=f"overall {f(ov['pass_rate'])*100:.1f}%")

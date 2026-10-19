@@ -1,0 +1,22 @@
+{
+  "nonce": "41e28822755044f79b91ad0e9950358c",
+  "wall_s": 108.45675897598267,
+  "peaks": {
+    "vram_mib": 10469.0,
+    "ram_used_mib": 15310.078125
+  },
+  "final_text": "The incident reference logged during the GPU cache flush is HX-774",
+  "timings": {
+    "cache_n": 0,
+    "prompt_n": 57884,
+    "prompt_ms": 90992.96,
+    "prompt_per_token_ms": 1.5719881141593532,
+    "prompt_per_second": 636.1371253336522,
+    "predicted_n": 256,
+    "predicted_ms": 16906.265,
+    "predicted_per_token_ms": 66.04009765625,
+    "predicted_per_second": 15.14231558537619
+  },
+  "finish_reason": "length",
+  "usage": {}
+}

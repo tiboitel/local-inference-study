@@ -1,0 +1,58 @@
+{
+  "task_id": "ClassEval_67",
+  "run": 3,
+  "class_name": "Order",
+  "source": "classeval",
+  "wall_s": 23.806549072265625,
+  "extract_ok": true,
+  "code_chars": 3762,
+  "loop": {
+    "answer": "```python\nclass Order:\n    \"\"\"\n    The class manages restaurant orders by allowing the addition of dishes, calculation of the total cost, and checkout.\n    \"\"\"\n\n\n    def __init__(self):\n        \"\"\"\n        Initialize the order management system\n        self.menu stores the dishes of resturant inventory\n        menu = [{\"dish\": dish name, \"price\": price, \"count\": count}, ...]\n        self.selected_dishes stores the dished selected by customer\n        selected_dish = {\"dish\": dish name, \"count\": count, price: price}\n        self.sales stores the sales of each dish\n        sales = {dish name: sales}\n        \"\"\"\n        self.menu = []\n        self.selected_dishes = []\n        self.sales = {}\n\n\n    def add_dish(self, dish):\n        \"\"\"\n        Check the self.menu and add into self.selected_dish if the dish count is valid.\n        And if the dish has successfully been added, change the count in self.menu.\n        :param dish: dict, the information of dish. dish = {\"dish\": dish name, \"count\": count, price: price}\n        :return: True if successfully added, or False otherwise.\n        >>> order = Order()\n        >>> order.menu.append({\"dish\": \"dish1\", \"price\": 10, \"count\": 5})\n        >>> order.add_dish({\"dish\": \"dish1\", \"price\": 10, \"count\": 3})\n        True\n        \"\"\"\n        # Find the dish in the menu\n        menu_item = None\n        for item in self.menu:\n            if item[\"dish\"] == dish[\"dish\"]:\n                menu_item = item\n                break\n\n        # If dish not found in menu, return False\n        if menu_item is None:\n            return False\n\n        # Check if there is enough stock\n        if menu_item[\"count\"] < dish[\"count\"]:\n            return False\n\n        # Check if dish is already in selected_dishes\n        for selected in self.selected_dishes:\n            if selected[\"dish\"] == dish[\"dish\"]:\n                # Merge the counts\n                selected[\"count\"] += dish[\"count\"]\n                break\n        else:\n            # Add new dish to selected_dishes\n            self.selected_dishes.append({\n                \"dish\": dish[\"dish\"],\n                \"count\": dish[\"count\"],\n                \"price\": dish[\"price\"]\n            })\n\n        # Decrease the count in menu\n        menu_item[\"count\"] -= dish[\"count\"]\n        return True\n\n\n    def calculate_total(self):\n        \"\"\"\n        Calculate the total price of dishes that have been ordered. Multiply the count, price and sales.\n        :return total: float, the final total price.\n        >>> order = Order()\n        >>> order.menu.append({\"dish\": \"dish1\", \"price\": 10, \"count\": 5})\n        >>> order.sales = {\"dish1\": 0.8}\n        >>> order.add_dish({\"dish\": \"dish1\", \"price\": 10, \"count\": 4})\n        True\n        >>> order.calculate_total()\n        32.0\n        \"\"\"\n        total = 0.0\n        for selected in self.selected_dishes:\n            price = selected[\"price\"]\n            count = selected[\"count\"]\n            # Apply sales discount if available\n            sales_rate = self.sales.get(selected[\"dish\"], 1.0)\n            total += count * price * sales_rate\n        return total\n\n\n    def checkout(self):\n        \"\"\"\n        Check out the dished ordered. IF the self.selected_dishes is not empty, invoke the calculate_total\n        method to check out.\n        :return Flase if the self.selected_dishes is empty, or total(return value of calculate_total) otherwise.\n        >>> order = Order()\n        >>> order.menu.append({\"dish\": \"dish1\", \"price\": 10, \"count\": 5})\n        >>> order.sales = {\"dish1\": 0.8}\n        >>> order.add_dish({\"dish\": \"dish1\", \"price\": 10, \"count\": 4})\n        True\n        >>> order.checkout()\n        32.0\n        \"\"\"\n        if not self.selected_dishes:\n            return False\n        return self.calculate_total()\n```",
+    "calls": [],
+    "turns": 1,
+    "turn_log": [
+      {
+        "turn": 1,
+        "content": "```python\nclass Order:\n    \"\"\"\n    The class manages restaurant orders by allowing the addition of dishes, calculation of the total cost, and checkout.\n    \"\"\"\n\n\n    def __init__(self):\n        \"\"\"\n        Initialize the order management system\n        self.menu stores the dishes of resturant inventory\n        menu = [{\"dish\": dish name, \"price\": price, \"count\": count}, ...]\n        self.selected_dishes stores the dished selected by customer\n        selected_dish = {\"dish\": dish name, \"count\": count, price: price}\n        self.sales stores the sales of each dish\n        sales = {dish name: sales}\n        \"\"\"\n        self.menu = []\n        self.selected_dishes = []\n        self.sales = {}\n\n\n    def add_dish(self, dish):\n        \"\"\"\n        Check the self.menu and add into self.selected_dish if the dish count is valid.\n        And if the dish has successfully been added, change the count in self.menu.\n        :param dish: dict, the information of dish. dish = {\"dish\": dish name, \"count\": count, price: price}\n        :return: True if successfully added, or False otherwise.\n        >>> order = Order()\n        >>> order.menu.append({\"dish\": \"dish1\", \"price\": 10, \"count\": 5})\n        >>> order.add_dish({\"dish\": \"dish1\", \"price\": 10, \"count\": 3})\n        True\n        \"\"\"\n        # Find the dish in the menu\n        menu_item = None\n        for item in self.menu:\n            if item[\"dish\"] == dish[\"dish\"]:\n                menu_item = item\n                break\n\n        # If dish not found in menu, return False\n        if menu_item is None:\n            return False\n\n        # Check if there is enough stock\n        if menu_item[\"count\"] < dish[\"count\"]:\n            return False\n\n        # Check if dish is already in selected_dishes\n        for selected in self.selected_dishes:\n            if selected[\"dish\"] == dish[\"dish\"]:\n                # Merge the counts\n                selected[\"count\"] += dish[\"count\"]\n                break\n        else:\n            # Add new dish to selected_dishes\n            self.selected_dishes.append({\n                \"dish\": dish[\"dish\"],\n                \"count\": dish[\"count\"],\n                \"price\": dish[\"price\"]\n            })\n\n        # Decrease the count in menu\n        menu_item[\"count\"] -= dish[\"count\"]\n        return True\n\n\n    def calculate_total(self):\n        \"\"\"\n        Calculate the total price of dishes that have been ordered. Multiply the count, price and sales.\n        :return total: float, the final total price.\n        >>> order = Order()\n        >>> order.menu.append({\"dish\": \"dish1\", \"price\": 10, \"count\": 5})\n        >>> order.sales = {\"dish1\": 0.8}\n        >>> order.add_dish({\"dish\": \"dish1\", \"price\": 10, \"count\": 4})\n        True\n        >>> order.calculate_total()\n        32.0\n        \"\"\"\n        total = 0.0\n        for selected in self.selected_dishes:\n            price = selected[\"price\"]\n            count = selected[\"count\"]\n            # Apply sales discount if available\n            sales_rate = self.sales.get(selected[\"dish\"], 1.0)\n            total += count * price * sales_rate\n        return total\n\n\n    def checkout(self):\n        \"\"\"\n        Check out the dished ordered. IF the self.selected_dishes is not empty, invoke the calculate_total\n        method to check out.\n        :return Flase if the self.selected_dishes is empty, or total(return value of calculate_total) otherwise.\n        >>> order = Order()\n        >>> order.menu.append({\"dish\": \"dish1\", \"price\": 10, \"count\": 5})\n        >>> order.sales = {\"dish1\": 0.8}\n        >>> order.add_dish({\"dish\": \"dish1\", \"price\": 10, \"count\": 4})\n        True\n        >>> order.checkout()\n        32.0\n        \"\"\"\n        if not self.selected_dishes:\n            return False\n        return self.calculate_total()\n```",
+        "reasoning_chars": 1365,
+        "tool_calls": [],
+        "finish_reason": "stop",
+        "prompt_n": 4,
+        "predicted_n": 1223
+      }
+    ],
+    "predicted_n": 1223,
+    "prompt_n": 4,
+    "cached_n": 0,
+    "finish_reason": "stop",
+    "error": null
+  },
+  "verdict": {
+    "passed": false,
+    "tests_run": 17,
+    "failures": 6,
+    "test_classes": {
+      "OrderTestAddDish": {
+        "testsRun": 6,
+        "failures": 1,
+        "errors": 0
+      },
+      "OrderTestCalculateTotal": {
+        "testsRun": 5,
+        "failures": 0,
+        "errors": 0
+      },
+      "OrderTestCheckout": {
+        "testsRun": 5,
+        "failures": 4,
+        "errors": 0
+      },
+      "OrderTest": {
+        "testsRun": 1,
+        "failures": 1,
+        "errors": 0
+      }
+    }
+  },
+  "finished_at": "2026-10-19T15:01:28Z"
+}

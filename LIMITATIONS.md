@@ -7,7 +7,9 @@ family (except the coding suite). Nothing below is a universal law.
 ## Scope limits
 
 - **Single configuration point.** 64k context, `ncmoe=20`, MTP `n-max=2`. The
-  results do not describe 128k, other quantizations, or other `ncmoe` values.
+  validated results do not describe 128k, other quantizations, or other `ncmoe`
+  values. The 128k numbers cited in the article come from the bench sibling and
+  are labelled there as not validated on the live profile.
 - **Single model.** The specific 29B REAP distill. The *direction* of the
   findings (depth matters; MTP helps decode; expert cache helps prefill) should
   generalize to MoE models on constrained VRAM, but the magnitudes will not.
@@ -22,8 +24,10 @@ family (except the coding suite). Nothing below is a universal law.
 - **Content-driven variance.** MTP acceptance depends on the text; a different
   corpus moves both the mean and the variance. The reported acceptance (0.838)
   is a property of this prompt family.
-- **Outliers are kept.** The raw traces include every kept run, including the
-  low-acceptance outlier, because excluding it would flatter the mean.
+- **Outliers are kept.** The raw traces include every kept run, including a slow
+  outlier (21.4 t/s on `on-b2-r4`, at a normal 0.79 acceptance), because
+  excluding it would flatter the mean. The lowest-acceptance kept run (0.729)
+  ran at normal speed, so slowness and low acceptance are different runs.
 
 ## Methodological limits
 

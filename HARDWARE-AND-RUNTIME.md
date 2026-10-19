@@ -15,7 +15,9 @@ enough host RAM to hold a 29B MoE model), not about an exotic rig.
 
 **VRAM, not host RAM, is the limit.** The KV cache is VRAM-resident, so host RAM
 does not scale with context length; a 128k configuration peaked near 10.7 GiB
-VRAM.
+VRAM. The two published 128k figures (10.7 GiB here, ~9.9 GiB in ARTICLE.md §9)
+have not been reconciled; both are bench-sibling estimates, not live 29B
+measurements.
 
 ## Model
 
@@ -46,6 +48,7 @@ VRAM.
 --threads 8 --threads-batch 8
 -b 2048 -ub 1024
 -np 1
+--moe-cache on
 --reasoning-budget 1024
 # sampling (shipped preset): temp 0.6, top_p 0.95, top_k 20, min_p 0.0,
 #                            repeat 1.0, presence 0.0
@@ -53,4 +56,5 @@ VRAM.
 
 `--n-cpu-moe 20` keeps 20 transformer layers' experts on the CPU and the rest on
 the GPU. That number is the whole memory game: see
-[results/ncmoe.csv](results/) and [results/moe_cache.csv](results/).
+[results/ncmoe_sweep_28b.csv](results/ncmoe_sweep_28b.csv) and
+[results/moe_cache.csv](results/moe_cache.csv).

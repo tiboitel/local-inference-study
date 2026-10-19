@@ -1,0 +1,58 @@
+{
+  "task_id": "ClassEval_86",
+  "run": 2,
+  "class_name": "TicTacToe",
+  "source": "classeval",
+  "wall_s": 18.82157015800476,
+  "extract_ok": true,
+  "code_chars": 2588,
+  "loop": {
+    "answer": "```python\nclass TicTacToe:\n    \"\"\"\n    The class represents a game of Tic-Tac-Toe and its functions include making a move on the board, checking for a winner, and determining if the board is full.\n    \"\"\"\n\n    def __init__(self, N=3):\n        \"\"\"\n        Initialize a 3x3 game board with all empty spaces and current symble player, default is 'X'.\n        \"\"\"\n        self.board = [[' ' for _ in range(N)] for _ in range(3)]\n        self.current_player = 'X'\n\n    def make_move(self, row, col):\n        \"\"\"\n        Place the current player's mark at the specified position on the board and switch the mark.\n        :param row: int, the row index of the position\n        :param col: int, the column index of the position\n        :return: bool, indicating whether the move was successful or not\n        >>> ttt = TicTacToe()\n        >>> ttt.current_player\n        'X'\n        >>> ttt.make_move(1, 1)\n        >>> ttt.current_player\n        'O'\n        \"\"\"\n        if self.board[row][col] != ' ':\n            return False\n        self.board[row][col] = self.current_player\n        self.current_player = 'O' if self.current_player == 'X' else 'X'\n        return True\n\n    def check_winner(self):\n        \"\"\"\n        Check if there is a winner on the board in rows, columns and diagonals three directions\n        :return: str or None, the mark of the winner ('X' or 'O'), or None if there is no winner yet\n        >>> ttt = TicTacToe()\n        >>> moves = [(1, 0), (2, 0), (1, 1), (2, 1), (1, 2)]\n        >>> for move in moves:\n        ...     ttt.make_move(move[0], move[1])\n        >>> ttt.check_winner()\n        'X'\n        \"\"\"\n        # Check rows\n        for i in range(3):\n            if self.board[i][0] == self.board[i][1] == self.board[i][2] != ' ':\n                return self.board[i][0]\n\n        # Check columns\n        for j in range(3):\n            if self.board[0][j] == self.board[1][j] == self.board[2][j] != ' ':\n                return self.board[0][j]\n\n        # Check main diagonal\n        if self.board[0][0] == self.board[1][1] == self.board[2][2] != ' ':\n            return self.board[0][0]\n\n        # Check anti-diagonal\n        if self.board[0][2] == self.board[1][1] == self.board[2][0] != ' ':\n            return self.board[0][2]\n\n        return None\n\n    def is_board_full(self):\n        \"\"\"\n        Check if the game board is completely filled.\n        :return: bool, indicating whether the game board is full or not\n        >>> ttt = TicTacToe()\n        >>> ttt.is_board_full()\n        False\n        \"\"\"\n        return all(cell != ' ' for row in self.board for cell in row)\n```",
+    "calls": [],
+    "turns": 1,
+    "turn_log": [
+      {
+        "turn": 1,
+        "content": "```python\nclass TicTacToe:\n    \"\"\"\n    The class represents a game of Tic-Tac-Toe and its functions include making a move on the board, checking for a winner, and determining if the board is full.\n    \"\"\"\n\n    def __init__(self, N=3):\n        \"\"\"\n        Initialize a 3x3 game board with all empty spaces and current symble player, default is 'X'.\n        \"\"\"\n        self.board = [[' ' for _ in range(N)] for _ in range(3)]\n        self.current_player = 'X'\n\n    def make_move(self, row, col):\n        \"\"\"\n        Place the current player's mark at the specified position on the board and switch the mark.\n        :param row: int, the row index of the position\n        :param col: int, the column index of the position\n        :return: bool, indicating whether the move was successful or not\n        >>> ttt = TicTacToe()\n        >>> ttt.current_player\n        'X'\n        >>> ttt.make_move(1, 1)\n        >>> ttt.current_player\n        'O'\n        \"\"\"\n        if self.board[row][col] != ' ':\n            return False\n        self.board[row][col] = self.current_player\n        self.current_player = 'O' if self.current_player == 'X' else 'X'\n        return True\n\n    def check_winner(self):\n        \"\"\"\n        Check if there is a winner on the board in rows, columns and diagonals three directions\n        :return: str or None, the mark of the winner ('X' or 'O'), or None if there is no winner yet\n        >>> ttt = TicTacToe()\n        >>> moves = [(1, 0), (2, 0), (1, 1), (2, 1), (1, 2)]\n        >>> for move in moves:\n        ...     ttt.make_move(move[0], move[1])\n        >>> ttt.check_winner()\n        'X'\n        \"\"\"\n        # Check rows\n        for i in range(3):\n            if self.board[i][0] == self.board[i][1] == self.board[i][2] != ' ':\n                return self.board[i][0]\n\n        # Check columns\n        for j in range(3):\n            if self.board[0][j] == self.board[1][j] == self.board[2][j] != ' ':\n                return self.board[0][j]\n\n        # Check main diagonal\n        if self.board[0][0] == self.board[1][1] == self.board[2][2] != ' ':\n            return self.board[0][0]\n\n        # Check anti-diagonal\n        if self.board[0][2] == self.board[1][1] == self.board[2][0] != ' ':\n            return self.board[0][2]\n\n        return None\n\n    def is_board_full(self):\n        \"\"\"\n        Check if the game board is completely filled.\n        :return: bool, indicating whether the game board is full or not\n        >>> ttt = TicTacToe()\n        >>> ttt.is_board_full()\n        False\n        \"\"\"\n        return all(cell != ' ' for row in self.board for cell in row)\n```",
+        "reasoning_chars": 1003,
+        "tool_calls": [],
+        "finish_reason": "stop",
+        "prompt_n": 466,
+        "predicted_n": 944
+      }
+    ],
+    "predicted_n": 944,
+    "prompt_n": 466,
+    "cached_n": 0,
+    "finish_reason": "stop",
+    "error": null
+  },
+  "verdict": {
+    "passed": true,
+    "tests_run": 16,
+    "failures": 0,
+    "test_classes": {
+      "TicTacToeTestMakeMove": {
+        "testsRun": 5,
+        "failures": 0,
+        "errors": 0
+      },
+      "TicTacToeTestCheckWinner": {
+        "testsRun": 5,
+        "failures": 0,
+        "errors": 0
+      },
+      "TicTacToeTestIsBoardFull": {
+        "testsRun": 5,
+        "failures": 0,
+        "errors": 0
+      },
+      "TicTacToeTestMain": {
+        "testsRun": 1,
+        "failures": 0,
+        "errors": 0
+      }
+    }
+  },
+  "finished_at": "2026-10-19T14:56:43Z"
+}

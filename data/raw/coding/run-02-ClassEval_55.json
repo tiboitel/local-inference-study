@@ -1,0 +1,53 @@
+{
+  "task_id": "ClassEval_55",
+  "run": 2,
+  "class_name": "Manacher",
+  "source": "classeval",
+  "wall_s": 36.7242476940155,
+  "extract_ok": true,
+  "code_chars": 2916,
+  "loop": {
+    "answer": "```python\nclass Manacher:\n    \"\"\"\n    his is a class that implements a manacher algorithm to find the Longest palindromic substring in a given string.\n    \"\"\"\n\n    def __init__(self, input_string) -> None:\n        \"\"\"\n        Initializes the Manacher class with the given input_string.\n        :param input_string: The input_string to be searched, str.\n        \"\"\"\n        self.input_string = input_string\n\n    def palindromic_length(self, center, diff, string):\n        \"\"\"\n        Recursively calculates the length of the palindromic substring based on a given center, difference value, and input string.\n        :param center: The center of the palindromic substring, int.\n        :param diff: The difference between the center and the current position, int.\n        :param string: The string to be searched, str.\n        :return: The length of the palindromic substring, int.\n        >>> manacher = Manacher('ababa')\n        >>> manacher.palindromic_length(2, 1, 'a|b|a|b|a')\n        2\n\n        \"\"\"\n        # Base case: if indices are out of bounds, return 0\n        if center - diff < 0 or center + diff >= len(string):\n            return 0\n        # If characters match at symmetric positions, add 1 and recurse\n        if string[center - diff] == string[center + diff]:\n            return 1 + self.palindromic_length(center, diff + 1, string)\n        # If characters don't match, return 0\n        return 0\n\n    def palindromic_string(self):\n        \"\"\"\n        Finds the longest palindromic substring in the given string.\n        :return: The longest palindromic substring, str.\n        >>> manacher = Manacher('ababaxse')\n        >>> manacher.palindromic_string()\n        'ababa'\n\n        \"\"\"\n        # Transform the string by adding separators between characters\n        # This handles both even and odd length palindromes uniformly\n        transformed = '|'.join(self.input_string)\n        longest_palindrome = ''\n        max_len = 0\n        \n        # Check each position as a potential center\n        for i in range(len(transformed)):\n            # For odd-length palindromes (centered at a character)\n            odd_len = self.palindromic_length(i, 1, transformed)\n            # For even-length palindromes (centered between characters)\n            even_len = self.palindromic_length(i, 0, transformed)\n            \n            # The actual length in the original string is half the transformed length\n            # (since every other character in transformed is a separator)\n            current_max = max(odd_len, even_len)\n            \n            if current_max > max_len:\n                max_len = current_max\n                # Extract the palindrome from the transformed string\n                # Remove separators to get the original characters\n                start = i - current_max\n                end = i + current_max + 1\n                longest_palindrome = transformed[start:end].replace('|', '')\n        \n        return longest_palindrome\n```",
+    "calls": [],
+    "turns": 1,
+    "turn_log": [
+      {
+        "turn": 1,
+        "content": "```python\nclass Manacher:\n    \"\"\"\n    his is a class that implements a manacher algorithm to find the Longest palindromic substring in a given string.\n    \"\"\"\n\n    def __init__(self, input_string) -> None:\n        \"\"\"\n        Initializes the Manacher class with the given input_string.\n        :param input_string: The input_string to be searched, str.\n        \"\"\"\n        self.input_string = input_string\n\n    def palindromic_length(self, center, diff, string):\n        \"\"\"\n        Recursively calculates the length of the palindromic substring based on a given center, difference value, and input string.\n        :param center: The center of the palindromic substring, int.\n        :param diff: The difference between the center and the current position, int.\n        :param string: The string to be searched, str.\n        :return: The length of the palindromic substring, int.\n        >>> manacher = Manacher('ababa')\n        >>> manacher.palindromic_length(2, 1, 'a|b|a|b|a')\n        2\n\n        \"\"\"\n        # Base case: if indices are out of bounds, return 0\n        if center - diff < 0 or center + diff >= len(string):\n            return 0\n        # If characters match at symmetric positions, add 1 and recurse\n        if string[center - diff] == string[center + diff]:\n            return 1 + self.palindromic_length(center, diff + 1, string)\n        # If characters don't match, return 0\n        return 0\n\n    def palindromic_string(self):\n        \"\"\"\n        Finds the longest palindromic substring in the given string.\n        :return: The longest palindromic substring, str.\n        >>> manacher = Manacher('ababaxse')\n        >>> manacher.palindromic_string()\n        'ababa'\n\n        \"\"\"\n        # Transform the string by adding separators between characters\n        # This handles both even and odd length palindromes uniformly\n        transformed = '|'.join(self.input_string)\n        longest_palindrome = ''\n        max_len = 0\n        \n        # Check each position as a potential center\n        for i in range(len(transformed)):\n            # For odd-length palindromes (centered at a character)\n            odd_len = self.palindromic_length(i, 1, transformed)\n            # For even-length palindromes (centered between characters)\n            even_len = self.palindromic_length(i, 0, transformed)\n            \n            # The actual length in the original string is half the transformed length\n            # (since every other character in transformed is a separator)\n            current_max = max(odd_len, even_len)\n            \n            if current_max > max_len:\n                max_len = current_max\n                # Extract the palindrome from the transformed string\n                # Remove separators to get the original characters\n                start = i - current_max\n                end = i + current_max + 1\n                longest_palindrome = transformed[start:end].replace('|', '')\n        \n        return longest_palindrome\n```",
+        "reasoning_chars": 4742,
+        "tool_calls": [],
+        "finish_reason": "stop",
+        "prompt_n": 4,
+        "predicted_n": 1742
+      }
+    ],
+    "predicted_n": 1742,
+    "prompt_n": 4,
+    "cached_n": 0,
+    "finish_reason": "stop",
+    "error": null
+  },
+  "verdict": {
+    "passed": false,
+    "tests_run": 11,
+    "failures": 6,
+    "test_classes": {
+      "ManacherTestPalindromicLength": {
+        "testsRun": 5,
+        "failures": 0,
+        "errors": 0
+      },
+      "ManacherTestPalindromicString": {
+        "testsRun": 5,
+        "failures": 5,
+        "errors": 0
+      },
+      "ManacherTestMain": {
+        "testsRun": 1,
+        "failures": 1,
+        "errors": 0
+      }
+    }
+  },
+  "finished_at": "2026-10-19T14:59:42Z"
+}
