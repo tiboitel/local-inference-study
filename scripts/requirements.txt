@@ -1,0 +1,4 @@
+# Minimal, pinned dependencies for the result and figure scripts.
+# Regenerating results/ and figures/ from raw traces should need nothing else.
+matplotlib==3.9.2
+pandas==2.2.3
