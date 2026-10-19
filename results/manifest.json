@@ -1,35 +1,8 @@
 {
   "git": {
-    "commit": "f49ccd9d6b775f57688a14fac05308512e0265c6",
-    "dirty": true,
-    "dirty_paths": [
-      "M .github/workflows/validate.yml",
-      " M .gitignore",
-      " M ARTICLE.md",
-      " M EVIDENCE.md",
-      " M METHODOLOGY.md",
-      " M README.md",
-      " M REPRODUCTION.md",
-      " M data/raw/README.md",
-      " M data/traceability.md",
-      " M results/traceability.txt",
-      " M scripts/build_results.py",
-      " M scripts/check_traceability.py",
-      " M scripts/manifest.py",
-      " M tests/fixture.py",
-      " M tests/test_artifacts.py",
-      " M tests/test_build.py",
-      " M tests/test_docs.py",
-      " M tests/test_recompute.py",
-      " M tests/test_statistics.py",
-      "?? PROMPT-PROVENANCE.md",
-      "?? RELEASE-NOTES-v0.2.0.md",
-      "?? data/claims.json",
-      "?? data/figure-sources.json",
-      "?? results/mtp_blocks.csv",
-      "?? results/mtp_comparison.csv",
-      "?? scripts/package_release.py"
-    ]
+    "commit": "797108d35b652aecb97454d8a97d0da3289d24f9",
+    "dirty": false,
+    "dirty_paths": []
   },
   "outputs": {
     "figures/fig_coding_passrate.png": "2ef615971911c93d6d1e534012b926920f71911b468f671000d6998aea6071f5",
@@ -55,5 +28,5 @@
   },
   "schema": 1,
   "source_manifest": "data/manifest.json",
-  "source_manifest_sha256": "604dfbbf6469b22b8c5ec91bd23b62e85564a359e5adabe9b92ffd162bdeed56"
+  "source_manifest_sha256": "7b1a4dab154726c3916a22ced8a488a049895f798ba9624b588d8aaa43075819"
 }
