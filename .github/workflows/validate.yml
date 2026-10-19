@@ -1,0 +1,45 @@
+name: validate
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: Install dependencies
+        run: pip install -r requirements-dev.txt
+
+      # Rebuild from the committed raw traces. If this changes a CSV, the
+      # committed results were stale and the manifest check below fails.
+      - name: Build results
+        run: python scripts/build_results.py
+
+      - name: Verify committed input/output hashes
+        run: python scripts/manifest.py --check
+
+      # Smoke test: the figures must render from the committed CSVs. Figure
+      # bytes are not compared across platforms; manifest hashes cover the
+      # committed files, and tests/test_artifacts.py checks they are present.
+      - name: Regenerate figures
+        run: python scripts/make_figures.py
+
+      - name: Tests
+        run: python -m pytest -q
+
+      - name: Hygiene scan
+        run: bash scripts/check_hygiene.sh
+
+      - name: Traceability gate
+        run: python scripts/check_traceability.py

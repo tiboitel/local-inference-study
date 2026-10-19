@@ -1,0 +1,3 @@
+# Test dependencies. Runtime deps are in scripts/requirements.txt.
+-r scripts/requirements.txt
+pytest==8.3.4
