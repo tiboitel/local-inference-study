@@ -1,0 +1,12 @@
+cff-version: 1.2.0
+message: "If you use this study, cite it as below."
+title: "Long-Context Local LLM Inference on 12 GB VRAM: What Actually Moves Performance?"
+authors:
+  - family-names: "Boitelle"
+    given-names: "Timothée"
+    alias: "tiboitel"
+type: software
+repository-code: "https://github.com/tiboitel/local-inference-study"
+url: "https://github.com/tiboitel/local-inference-study"
+license: CC-BY-4.0
+year: 2026
