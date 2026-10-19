@@ -1,0 +1,27 @@
+{
+  "git": {
+    "commit": "3468474a7c771e203dffff181d2a5914d50d92da",
+    "dirty": false,
+    "dirty_paths": []
+  },
+  "outputs": {
+    "figures/fig_coding_passrate.png": "2ef615971911c93d6d1e534012b926920f71911b468f671000d6998aea6071f5",
+    "figures/fig_deep_vs_depth0.png": "a389e940cc3cb7ecbbc3aec0453295777bcc375a94deafcf5b82843a1c0ead92",
+    "figures/fig_moe_cache.png": "9ffcc52ee6f870f60f246fb99d0b76eb1f2286ebe5cdd710459592d21df0df0b",
+    "figures/fig_mtp_ab.png": "9d865b368541119d2934bb995dd644566fc26d480795144fe49a9bbc4dd26bef",
+    "figures/fig_prefill_vs_ctx.png": "a67d1dd5de5b52cd17eff4833f21ccd4872ff68d792f147ff9ab877b1318eae4",
+    "results/coding_eval.csv": "2ebb1250a0cb05c130021f8a9a329f7feb56d917a2c94eeb2b915046656bbc0c",
+    "results/coding_overall.csv": "2b5a4c7c73ca417462d8c1dd73b202967296da04ce695e2c0d13a761afc6c0e9",
+    "results/coding_summary.csv": "3a9adabbb6d827c8cdd0977218007479e492a73ef8fad73eb7639e4e23c0cd13",
+    "results/deep_vs_depth0.csv": "4aec7434dce94322f8d3bb7a99813b715fef349597ed37f60e28985239df9d0e",
+    "results/moe_cache.csv": "6482daa6385a6678d0b3d0975acb5f650e15ff4dca373ee14a022605925e66b0",
+    "results/mtp_ab.csv": "d37c82e435cd1f601b6053673cd47a0199033e955cd68f1da4c38fe5a805ff2b",
+    "results/mtp_runs.csv": "6e7c93724c1d3ea27636022fa39ad235714dd8501f5791c7c48b67d65c95876d",
+    "results/ncmoe_probe_29b.csv": "f7223e868cbb14cf8c0d78702a9c8487049f5d2a918430dd793bc3abe74a9ea3",
+    "results/ncmoe_sweep_28b.csv": "dc7677e90bfe7343f06500086b456c2668c08dc482dc9d2b6e986f84b2080761",
+    "results/prefill_vs_ctx.csv": "b8ad20a8030869ea257aa44b586112f51f69e9a55f5e38d284868404ad75e2c9"
+  },
+  "schema": 1,
+  "source_manifest": "data/manifest.json",
+  "source_manifest_sha256": "2ece31b76fe70faec7e270d2b77b45f7d84902c8ff5201e52970361548540283"
+}
