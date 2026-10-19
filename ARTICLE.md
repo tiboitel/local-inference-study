@@ -45,8 +45,9 @@ Each section states which track it uses. The primary configuration is:
 The full host configuration and serving flags are documented in
 [HARDWARE-AND-RUNTIME.md](HARDWARE-AND-RUNTIME.md).
 
-![Tested serving path and memory split](figures/fig_setup.svg)
+![Figure 1 — Tested serving path and memory split](figures/fig_setup.svg)
 
+**Figure 1 — Tested serving path and memory split.**
 *Schematic: the request path and measured memory split, not a data plot. On the tested host, MTP-on reached 11,588 MiB peak VRAM versus 10,595 MiB with MTP off. Exact flags: [HARDWARE-AND-RUNTIME.md](HARDWARE-AND-RUNTIME.md).*
 
 Raw traces, table provenance and per-claim status are documented in
@@ -72,8 +73,9 @@ In the available 28B benchmark-sibling comparison:
 | `llama-bench` token generation, depth 0 | **<!-- claim:depth0_tg -->46.0<!-- /claim --> t/s** |
 | After a full 64k prompt | **<!-- claim:deep_tg -->15.3<!-- /claim --> t/s** |
 
-![Depth-0 vs deep-context decode](figures/fig_deep_vs_depth0.png)
+![Figure 2 — Depth-0 vs deep-context decode](figures/fig_deep_vs_depth0.png)
 
+**Figure 2 — Depth-0 vs deep-context decode.**
 *Data: [deep_vs_depth0.csv](results/deep_vs_depth0.csv) · source rows: [data/sources-bench.json](data/sources-bench.json) §06/§07 · supporting track: 28B benchmark sibling. The depth-0 row is `llama-bench`; the deep row is a server request. The two rows do not carry a matched VRAM reading.*
 
 In this comparison, the depth-0 result is roughly **3× higher** than the observed deep-context decode rate.
@@ -81,13 +83,13 @@ In this comparison, the depth-0 result is roughly **3× higher** than the observ
 That does not make depth-0 benchmarking useless. It means that it should not be used as a proxy for the full request path when the workload routinely carries a large context. For an agentic workload, the relevant sequence is closer to:
 
 ```text
-large prompt
+Large prompt
     ↓
-prefill
+Prefill
     ↓
-long-context state
+Long-context state
     ↓
-decode
+Decode
 ```
 
 A benchmark that measures only the final step starting from an empty context leaves out much of the workload.
@@ -144,8 +146,9 @@ At 1k context:
 | `ncmoe=20`, cache soft | 313.2 t/s |
 | `ncmoe=20`, cache on | **<!-- claim:cache_on -->775.7<!-- /claim --> t/s** |
 
-![Expert-cache effect on prefill](figures/fig_moe_cache.png)
+![Figure 3 — Expert-cache effect on prefill](figures/fig_moe_cache.png)
 
+**Figure 3 — Expert-cache effect on prefill.**
 *Data: [moe_cache.csv](results/moe_cache.csv) · source rows: [data/sources-bench.json](data/sources-bench.json) §04 · supporting track: 28B benchmark sibling at 1k context. The source ledger is hand-transcribed; its provenance is documented in [EVIDENCE.md](EVIDENCE.md).*
 
 The cache increased measured prefill by approximately **2.5×** in this comparison. The effect is much less useful for decode. Across the tested cache and `ncmoe` configurations, deep decode remained around **14–15 t/s**.
@@ -166,8 +169,9 @@ On the 28B benchmark sibling:
 | 64k | 712 t/s |
 | 128k | <109 t/s |
 
-![Prefill throughput vs context](figures/fig_prefill_vs_ctx.png)
+![Figure 4 — Prefill throughput vs context](figures/fig_prefill_vs_ctx.png)
 
+**Figure 4 — Prefill throughput vs context.**
 *Data: [prefill_vs_ctx.csv](results/prefill_vs_ctx.csv) · source rows: [data/sources-bench.json](data/sources-bench.json) §06 · supporting track: 28B benchmark sibling. The 64k no-cache point is a timeout upper bound rather than a completed measurement.*
 
 Two constraints become visible here.
@@ -204,14 +208,16 @@ The primary experiment compares MTP off and on using the same live 29B configura
 | MTP acceptance | — | **<!-- claim:mtp_accept -->0.838<!-- /claim -->** | SD 0.070 |
 | Peak VRAM | 10,595 MiB | 11,588 MiB | **+993 MiB** |
 
-![MTP on/off at 64k](figures/fig_mtp_ab.png)
+![Figure 5 — MTP on/off at 64k](figures/fig_mtp_ab.png)
 
+**Figure 5 — MTP on/off at 64k.**
 *Data: [mtp_ab.csv](results/mtp_ab.csv), [mtp_comparison.csv](results/mtp_comparison.csv) · live 29B configuration, 10 retained runs per arm, approximately 57.9k-token prompts, cold prefill on every retained run.*
 
 The run-level distribution is shown below.
 
-![Every kept MTP run](figures/fig_mtp_runs.png)
+![Figure 6 — Every kept MTP run](figures/fig_mtp_runs.png)
 
+**Figure 6 — Every kept MTP run.**
 *Data: [mtp_runs.csv](results/mtp_runs.csv) · live 29B configuration. Each request used a unique nonce, so the two arms are independent rather than paired; the points show the full spread and the short lines are arm means.*
 
 The measured decode rate increased from **14.79 to 38.56 t/s**, a gain of **160.7%**.
@@ -431,8 +437,9 @@ The results were:
 | Single-function tasks | 6/6 = 100% |
 | Median wall-clock time / task | 16.3 s |
 
-![Coding completion by task](figures/fig_coding_passrate.png)
+![Figure 7 — Coding completion by task](figures/fig_coding_passrate.png)
 
+**Figure 7 — Coding completion by task.**
 *Data: [coding_summary.csv](results/coding_summary.csv) · raw traces: [data/raw/coding/](data/raw/coding/).*
 
 The run-level Wilson interval treats all 33 runs as independent observations. They are not: the experiment contains 11 tasks × 3 repetitions. The task-clustered bootstrap therefore gives a more conservative view of uncertainty: **27.3–84.9%**. Neither interval estimates performance on unseen coding tasks. The suite contains only 11 selected tasks with hidden test contracts.
