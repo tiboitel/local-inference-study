@@ -1,4 +1,4 @@
-# raw run traces are regenerated, not committed
+# raw traces are committed (sanitized); logs and model weights are not
 profile/
 *.gguf
 *.log

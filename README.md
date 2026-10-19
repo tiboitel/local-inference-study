@@ -41,7 +41,7 @@ generates in its shadow. This study measures that path.
 ## Reproduce
 
 ```bash
-# once: place raw run traces in data/raw/ (see REPRODUCTION.md)
+# raw traces are committed under data/raw/ (see REPRODUCTION.md)
 pip install -r scripts/requirements.txt
 python scripts/build_results.py        # raw traces -> results/*.csv
 python scripts/make_figures.py         # results/*.csv -> figures/*.png

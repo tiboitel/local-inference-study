@@ -19,12 +19,16 @@ llama-server -m <model>.gguf \
 Follow the methodology protocol literally: `stream: true`, `cache_prompt: false`,
 unique nonce per request, interleaved arms, warmups discarded, ≥5 kept runs.
 
-## 2. Capture raw traces
+## 2. Raw traces
 
-Each run writes one JSON trace: the request, the response, the `timings` block
-reported by the server, and the per-second resource samples (VRAM, RAM, GPU%,
-watts, swap). Raw traces are the source of truth for [results/](results/); they
-are kept out of git by default (see `.gitignore`) and can be re-generated.
+Each run writes one JSON trace: the response, the `timings` block reported by
+the server, and the per-run peak resource samples (VRAM, RAM). The traces are
+committed under `data/raw/` (sanitized: no host paths); `*.log` files and model
+weights are not. They are the source of truth for [results/](results/).
+
+The runner and coding harness are **not published** with this repository, so the
+committed traces can be audited but cannot be regenerated from a fresh clone.
+Steps that need the harness are marked **[private runner]**.
 
 ## 3. Build the result tables
 
@@ -48,7 +52,9 @@ python scripts/make_figures.py   # results/*.csv -> figures/*.png
 The coding result comes from a separate harness that drives the same endpoint:
 each task is one turn, the generated code is extracted mechanically and executed
 against hidden `unittest` tests, and the harness self-tests 11/11 on canonical
-solutions before any model call. See [results/coding_eval.csv](results/).
+solutions before any model call. The harness is **not published**; the committed
+per-run traces are the auditable artifact. See
+[results/coding_eval.csv](results/).
 
 ## 6. Verify
 
