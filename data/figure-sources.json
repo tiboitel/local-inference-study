@@ -1,0 +1,10 @@
+{
+  "fig_coding_passrate.png": {"sources": ["coding_summary.csv", "coding_overall.csv"], "script": "scripts/make_figures.py"},
+  "fig_deep_vs_depth0.png": {"sources": ["deep_vs_depth0.csv"], "script": "scripts/make_figures.py"},
+  "fig_moe_cache.png": {"sources": ["moe_cache.csv"], "script": "scripts/make_figures.py"},
+  "fig_mtp_ab.png": {"sources": ["mtp_ab.csv"], "script": "scripts/make_figures.py"},
+  "fig_mtp_runs.png": {"sources": ["mtp_runs.csv", "mtp_ab.csv"], "script": "scripts/make_figures.py"},
+  "fig_overview.png": {"sources": ["mtp_ab.csv", "deep_vs_depth0.csv", "moe_cache.csv"], "script": "scripts/make_figures.py"},
+  "fig_prefill_vs_ctx.png": {"sources": ["prefill_vs_ctx.csv"], "script": "scripts/make_figures.py"},
+  "fig_setup.svg": {"sources": [], "script": "hand-authored schematic"}
+}

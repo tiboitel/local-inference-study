@@ -36,6 +36,7 @@ def make_repo(root: Path) -> Path:
                     "usage": {}, "wall_s": 1.0})
             _write(mtp / f"summary-{arm}-b{block}.json", {
                 "arm": arm, "block": block, "kept": 5, "attempts": 5,
+                "failures": [],
                 "finished_at": f"2026-10-19T{BLOCK_ORDER[(arm, block)]}:00:00Z"})
 
     for index, task in enumerate(TASKS):

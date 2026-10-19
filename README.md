@@ -49,13 +49,15 @@ estimates general performance on unseen coding tasks.
 
 ![MTP on/off at 64k](figures/fig_mtp_ab.png)
 
-*Data: [mtp_ab.csv](results/mtp_ab.csv) · raw traces:
+*Data: [mtp_ab.csv](results/mtp_ab.csv) ·
+[mtp_comparison.csv](results/mtp_comparison.csv) · raw traces:
 [data/raw/mtp/](data/raw/mtp/) · rebuild: `python scripts/build_results.py &&
 python scripts/make_figures.py`. Live 29B MTP profile, 10 kept runs per arm,
 interleaved `off → on → on → off`, cold prefill (`cache_n == 0`), ~57.9k-token
 prompt. Decode 14.79 → 38.56 t/s (+160.7%, combined 95% CI ±4.58). Prefill
 645 → 637 t/s (−1.19%). Cost: +993 MiB peak VRAM and ~1.7 GiB host RAM.
-Acceptance 0.838 (sd 0.070).*
+Acceptance 0.838 (sd 0.070). The difference interval is unpaired: independent
+requests, Welch SE, conservative t(df=9)=2.262; Welch df≈9.66.*
 
 ![Every kept MTP run](figures/fig_mtp_runs.png)
 
@@ -136,6 +138,12 @@ python -m pytest -q
 bash scripts/check_hygiene.sh
 ```
 
+Version `v0.2.0` is the frozen evidence release. Build its checksummed artifact
+with `python scripts/package_release.py --version 0.2.0`; it contains the
+sanitized traces, tables, figures, manifests, and public scripts, but not the
+model weights, logs, or private runner. See
+[RELEASE-NOTES-v0.2.0.md](RELEASE-NOTES-v0.2.0.md).
+
 The traces can be audited from a fresh clone, but the original runner and coding
 harness are **not published**, so the experiment cannot be independently
 repeated from this repository alone. `scripts/reproduce_mtp_ab.py` publishes the
@@ -150,6 +158,7 @@ the private-runner boundaries: [REPRODUCTION.md](REPRODUCTION.md).
 | Full article | [ARTICLE.md](ARTICLE.md) |
 | Evidence labels, matrix, release checklist | [EVIDENCE.md](EVIDENCE.md) |
 | Traceability gate output | [results/traceability.txt](results/traceability.txt) |
+| Prompt provenance and limits | [PROMPT-PROVENANCE.md](PROMPT-PROVENANCE.md) |
 | Methodology and protocol | [METHODOLOGY.md](METHODOLOGY.md) |
 | Hardware, model, and serving flags | [HARDWARE-AND-RUNTIME.md](HARDWARE-AND-RUNTIME.md) |
 | Raw traces and traceability map | [data/raw/](data/raw/) · [data/traceability.md](data/traceability.md) |

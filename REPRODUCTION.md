@@ -11,9 +11,11 @@ separately:
   and coding harness are private.
 
 The aim is that a reader with similar hardware can rebuild every figure from raw
-traces, and that no figure is a hand-typed number. From a fresh clone, steps 3,
-4 and 6 work using the committed traces. Step 1 needs the model artifact, step 5
-needs the unpublished harness, and step 7 is a separate procedure-only client.
+traces, and that no figure is a hand-typed number. A fresh clone contains
+`data/raw/`; steps 3, 4 and 6 rebuild every table and figure from those committed
+traces. Step 1 needs the model artifact, step 5 needs the unpublished harness, and
+step 7 is a separate procedure-only client. The original prompt body is not
+published; see [PROMPT-PROVENANCE.md](PROMPT-PROVENANCE.md).
 
 ## 1. Serve the model
 
@@ -44,8 +46,9 @@ committed under `data/raw/` (sanitized: no host paths); `*.log` files and model
 weights are not. They are the source of truth for [results/](results/).
 
 The runner and coding harness are **not published** with this repository, so the
-committed traces can be audited but cannot be regenerated from a fresh clone.
-Steps that need the harness are marked **[private runner]**.
+*experiment* cannot be rerun from a fresh clone. The committed traces themselves
+are present and sufficient to rebuild every published table. Steps that need the
+harness are marked **[private runner]**.
 
 ## 3. Build the result tables
 
@@ -56,7 +59,12 @@ python scripts/build_results.py --raw data/raw --out results
 
 `build_results.py` reads the raw traces and emits one CSV per experiment. It is
 the *only* place a number in `results/` is produced; hand-editing a CSV breaks
-the traceability chain and will fail `scripts/check_traceability.py`.
+the traceability chain and will fail `scripts/check_traceability.py`. The MTP
+summary includes `mtp_ab.csv` (per-arm means, SEM, t-interval),
+`mtp_comparison.csv` (unpaired difference, Welch SE, conservative df, CI), and
+`mtp_blocks.csv` (block-level means). The claim registry in
+[`data/claims.json`](data/claims.json) binds marked article values to table
+cells.
 
 Record or verify the provenance of those inputs and outputs:
 
@@ -94,6 +102,16 @@ leaves the repo. The report is deterministic and is committed as
 [results/traceability.txt](results/traceability.txt); CI regenerates it and
 fails if it drifts.
 
+The CI `documented-reproduction` job runs the public workflow from a clean
+checkout, writes figures to a temporary directory, and then requires
+
+```bash
+git diff --exit-code -- results data
+```
+
+so a missing raw input or a stale result table fails the release, not just the
+prose checks.
+
 ## 7. Procedure-only public A/B client
 
 `scripts/reproduce_mtp_ab.py` is a minimal, dependency-free client for the
@@ -114,6 +132,18 @@ raw JSON plus `runs.csv` and `ab.csv`. It does **not** reproduce the original
 prompt family or the exact published magnitudes. Compare directions and
 uncertainty, and label the output **procedure reproduction**, not result
 reproduction.
+
+## 8. Release artifact
+
+```bash
+python scripts/package_release.py --version 0.2.0
+```
+
+This writes a deterministic `dist/local-inference-study-v0.2.0.tar.gz` and a
+SHA-256 sidecar. The archive contains the sanitized traces, result tables,
+figures, manifests, report, and public scripts; it excludes model weights,
+server logs, and the private harness. The version tag is the immutable
+reference for the article, results, and raw data.
 
 ## What is not published
 

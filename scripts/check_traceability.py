@@ -22,6 +22,7 @@ import csv
 import json
 import math
 import random
+import re
 import statistics
 import subprocess
 import sys
@@ -268,7 +269,46 @@ def recompute_mtp(mtp) -> tuple[list, list]:
             "vram_peak_mib": max(r["vram_mib"] for r in rs),
             "ram_peak_mib": round(max(r["ram_mib"] for r in rs), 0),
         })
-    return runs, agg
+    off = [r["tg_t_s"] for r in runs if r["arm"] == "off"]
+    on = [r["tg_t_s"] for r in runs if r["arm"] == "on"]
+    comparison = []
+    if len(off) > 1 and len(on) > 1:
+        n1, n2 = len(off), len(on)
+        s1, s2 = statistics.stdev(off), statistics.stdev(on)
+        se = math.sqrt(s1 * s1 / n1 + s2 * s2 / n2)
+        df_welch = ((s1 * s1 / n1 + s2 * s2 / n2) ** 2 /
+                    ((s1 * s1 / n1) ** 2 / (n1 - 1) +
+                     (s2 * s2 / n2) ** 2 / (n2 - 1)))
+        df = min(n1, n2) - 1
+        tcrit = t95(df + 1)
+        diff = mean(on) - mean(off)
+        half = tcrit * se
+        comparison.append({
+            "comparison": "tg", "arm_a": "off", "arm_b": "on",
+            "n_a": n1, "n_b": n2,
+            "mean_a": round(mean(off), 2), "mean_b": round(mean(on), 2),
+            "difference": round(diff, 2),
+            "difference_pct": round(diff / mean(off) * 100, 1),
+            "se_diff": round(se, 2), "df": df,
+            "df_welch": round(df_welch, 2), "tcrit": round(tcrit, 3),
+            "ci95_halfwidth": round(half, 2),
+            "ci95_lo": round(diff - half, 2),
+            "ci95_hi": round(diff + half, 2),
+            "method": "unpaired Welch SE; conservative t(df=min(n)-1)",
+        })
+    blocks = []
+    for block in (1, 2):
+        a = [r["tg_t_s"] for r in runs
+             if r["arm"] == "off" and r["block"] == block]
+        b = [r["tg_t_s"] for r in runs
+             if r["arm"] == "on" and r["block"] == block]
+        blocks.append({
+            "block": block, "n_off": len(a), "n_on": len(b),
+            "off_mean": round(mean(a), 2) if a else None,
+            "on_mean": round(mean(b), 2) if b else None,
+            "difference": round(mean(b) - mean(a), 2) if a and b else None,
+        })
+    return runs, agg, comparison, blocks
 
 
 def recompute_coding(coding) -> tuple[list, list, dict]:
@@ -333,15 +373,17 @@ def recompute_coding(coding) -> tuple[list, list, dict]:
     return runs, tasks, overall
 
 
-def stage_recompute(mtp, coding) -> tuple[list, list]:
-    mruns, magg = recompute_mtp(mtp)
+def stage_recompute(mtp, coding) -> tuple[list, list, list]:
+    mruns, magg, mcomp, mblocks = recompute_mtp(mtp)
     compare("mtp_runs.csv", mruns, ("arm", "block", "run"))
     compare("mtp_ab.csv", magg, ("arm",))
+    compare("mtp_comparison.csv", mcomp, ("comparison",))
+    compare("mtp_blocks.csv", mblocks, ("block",))
     cruns, ctasks, coverall = recompute_coding(coding)
     compare("coding_eval.csv", cruns, ("file",))
     compare("coding_summary.csv", ctasks, ("task_id",))
     compare("coding_overall.csv", [coverall], ("runs",))
-    return magg, [coverall]
+    return magg, mcomp, [coverall]
 
 
 # --- stage 4: invariants ---------------------------------------------------
@@ -364,8 +406,34 @@ def stage_invariants(mtp, coding) -> None:
              "expected off,on,on,off")
     for arm in ("off", "on"):
         n = len([k for k in mtp if k.startswith(f"{arm}-")])
-        if n < 5:
-            fail(f"invariant: only {n} kept runs for arm {arm} (need >=5)")
+        if n != 10:
+            fail(f"invariant: {n} kept runs for arm {arm} (need exactly 10)")
+        for block in (1, 2):
+            nb = len([k for k in mtp if k.startswith(f"{arm}-b{block}-")])
+            if nb != 5:
+                fail(f"invariant: {nb} runs for {arm} block {block} "
+                     "(need exactly 5)")
+            vals = [d["timings"].get("prompt_n") for name, d in mtp.items()
+                    if name.startswith(f"{arm}-b{block}-")]
+            vals = [v for v in vals if isinstance(v, int)]
+            if vals and max(vals) - min(vals) > 16:
+                fail(f"invariant: {arm} block {block} prompt spread "
+                     f"{max(vals) - min(vals)} (need <=16)")
+            s = RAW_MTP / f"summary-{arm}-b{block}.json"
+            if not s.exists():
+                fail(f"invariant: missing {s.name}")
+                continue
+            sd = json.loads(s.read_text())
+            kept, attempts = sd.get("kept"), sd.get("attempts")
+            failures = sd.get("failures")
+            if sd.get("arm") != arm or sd.get("block") != block:
+                fail(f"invariant: {s.name} arm/block mismatch")
+            if kept != 5:
+                fail(f"invariant: {s.name} kept={kept} != 5")
+            if not isinstance(failures, list):
+                fail(f"invariant: {s.name} failures is not a list")
+            elif attempts != kept + len(failures):
+                fail(f"invariant: {s.name} attempts={attempts} != kept+failures")
 
     per_task: dict[str, int] = {}
     for name, d in coding.items():
@@ -400,13 +468,12 @@ def stage_invariants(mtp, coding) -> None:
 
 # --- stage 5: claims -------------------------------------------------------
 
-def stage_claims(magg, coverall) -> None:
+def stage_claims(magg, mcomp, coverall) -> None:
     art = (ROOT / "ARTICLE.md").read_text()
     o = coverall[0]
     k, n = o["passes"], o["runs"]
     tp, tr = o["tests_passed"], o["tests_run"]
     expected = {
-        f"{k}/{n}": "run-level completion",
         f"{tp}/{tr}": "test-method pass",
         f"{o['classeval_passes']}/{o['classeval_runs']}": "ClassEval-only passes",
         f"{o['humaneval_passes']}/{o['humaneval_runs']}": "single-function floor",
@@ -432,6 +499,13 @@ def stage_claims(magg, coverall) -> None:
         f"{float(arms['off']['pp_mean']):.2f}": "MTP-off prefill",
         f"{float(arms['on']['pp_mean']):.2f}": "MTP-on prefill",
     })
+    if mcomp:
+        c = mcomp[0]
+        expected.update({
+            f"{float(c['difference']):.2f}": "MTP decode difference",
+            f"{float(c['difference_pct']):.1f}": "MTP decode delta (%)",
+            f"{float(c['ci95_halfwidth']):.2f}": "MTP difference CI half-width",
+        })
     dd = {r["mode"]: r for r in load("deep_vs_depth0.csv")}
     if dd:
         expected[f"{float(dd['depth0_llama_bench']['tg_t_s']):.1f}"] = "depth-0 TG"
@@ -449,6 +523,109 @@ def stage_claims(magg, coverall) -> None:
     for v in ("859", "109"):
         if v not in art:
             fail(f"claims: ARTICLE.md missing prefill-vs-context value {v}")
+
+
+def stage_claim_registry() -> None:
+    """Every marked value must match the structured claim registry exactly."""
+    path = DATA / "claims.json"
+    if not path.exists():
+        fail("claims: data/claims.json missing")
+        return
+    try:
+        registry = json.loads(path.read_text())
+    except json.JSONDecodeError as exc:
+        fail(f"claims: data/claims.json invalid ({exc})")
+        return
+    docs = {name: (ROOT / name).read_text()
+            for name in ("ARTICLE.md", "README.md")}
+    for cid, spec in registry.items():
+        rows = load(spec["table"])
+        hits = [r for r in rows
+                if all(str(r.get(k)) == str(v)
+                       for k, v in (spec.get("where") or {}).items())]
+        if len(hits) != 1:
+            fail(f"claims: {cid} matched {len(hits)} rows in {spec['table']}")
+            continue
+        raw = hits[0].get(spec["field"])
+        if raw in (None, ""):
+            fail(f"claims: {cid} has no {spec['field']}")
+            continue
+        try:
+            rendered = (str(int(round(float(raw))))
+                        if spec["format"].endswith("d")
+                        else format(float(raw), spec["format"]))
+        except (TypeError, ValueError, KeyError) as exc:
+            fail(f"claims: {cid} cannot format {raw!r} ({exc})")
+            continue
+        found = 0
+        pattern = (r"<!--\s*claim:" + re.escape(cid) +
+                   r"\s*-->(.*?)<!--\s*/claim\s*-->")
+        for name, body in docs.items():
+            for value in re.findall(pattern, body, re.S):
+                found += 1
+                if value.strip() != rendered:
+                    fail(f"claims: {name} marker {cid} shows "
+                         f"{value.strip()!r}, expected {rendered!r}")
+        if found == 0:
+            fail(f"claims: no marker for {cid} in ARTICLE.md/README.md")
+
+
+def stage_figures() -> None:
+    """Every rendered figure must declare its source tables and be readable."""
+    path = DATA / "figure-sources.json"
+    if not path.exists():
+        fail("figures: data/figure-sources.json missing")
+        return
+    try:
+        sources = json.loads(path.read_text())
+    except json.JSONDecodeError as exc:
+        fail(f"figures: data/figure-sources.json invalid ({exc})")
+        return
+    files = {p.name for p in (ROOT / "figures").glob("*")
+             if p.suffix in (".png", ".svg")}
+    if files != set(sources):
+        fail(f"figures: source map mismatch: only-files={sorted(files - set(sources))} "
+             f"only-map={sorted(set(sources) - files)}")
+    for name, spec in sources.items():
+        for table in spec.get("sources", []):
+            if not (RES / table).exists():
+                fail(f"figures: {name} references missing results/{table}")
+        p = ROOT / "figures" / name
+        if not p.exists():
+            continue
+        if name.endswith(".png"):
+            head = p.read_bytes()[:24]
+            if (len(head) < 24 or head[:8] != b"\x89PNG\r\n\x1a\n"
+                    or int.from_bytes(head[16:20], "big") == 0
+                    or int.from_bytes(head[20:24], "big") == 0):
+                fail(f"figures: {name} is not a valid non-empty PNG")
+        if name.endswith(".svg"):
+            if "<svg" not in p.read_text()[:500]:
+                fail(f"figures: {name} is not a readable SVG")
+
+
+def stage_bench_provenance() -> None:
+    path = DATA / "sources-bench.json"
+    if not path.exists():
+        fail("bench: data/sources-bench.json missing")
+        return
+    try:
+        src = json.loads(path.read_text())
+    except json.JSONDecodeError as exc:
+        fail(f"bench: data/sources-bench.json invalid ({exc})")
+        return
+    status = src.get("_provenance_status", "")
+    if not status.startswith("not self-contained"):
+        fail("bench: provenance status must state that the source clip is "
+             "not self-contained")
+    for key in ("ncmoe_sweep_28b", "moe_cache", "prefill_vs_ctx",
+                "deep_vs_depth0"):
+        for index, row in enumerate(src.get(key, [])):
+            if not row.get("section"):
+                fail(f"bench: {key}[{index}] has no source section")
+    evidence = (ROOT / "EVIDENCE.md").read_text()
+    if "self-contained" not in evidence:
+        fail("bench: EVIDENCE.md does not disclose the non-self-contained ledger")
 
 
 # --- stage 6: staleness ----------------------------------------------------
@@ -488,6 +665,9 @@ def report_text() -> str:
         "stage_recompute: OK",
         "stage_invariants: OK",
         "stage_claims: OK",
+        "stage_claim_registry: OK",
+        "stage_figures: OK",
+        "stage_bench_provenance: OK",
         "stage_staleness: OK",
         f"mtp_runs: {len(load('mtp_runs.csv'))}",
         f"coding_runs: {len(load('coding_eval.csv'))}",
@@ -513,9 +693,12 @@ def main() -> None:
     mtp, coding = mtp_raw(), coding_raw()
     stage_schema(mtp, coding)
     stage_integrity(mtp, coding)
-    magg, coverall = stage_recompute(mtp, coding)
+    magg, mcomp, coverall = stage_recompute(mtp, coding)
     stage_invariants(mtp, coding)
-    stage_claims(magg, coverall)
+    stage_claims(magg, mcomp, coverall)
+    stage_claim_registry()
+    stage_figures()
+    stage_bench_provenance()
     stage_staleness()
 
     if problems:

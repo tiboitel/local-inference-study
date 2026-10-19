@@ -10,6 +10,8 @@ gaps are in [EVIDENCE.md](../EVIDENCE.md).
 |---|---|---|---|
 | `results/mtp_runs.csv` | 20 kept runs | `data/raw/mtp/{arm}-b{block}-r{run}.json` | filename existence check |
 | `results/mtp_ab.csv` | 2 arms | aggregate of `mtp_runs.csv` | aggregate agreement check |
+| `results/mtp_comparison.csv` | 1 comparison | unpaired t from `mtp_runs.csv` | independent recompute (mean, SEM, Welch SE, conservative df, CI) |
+| `results/mtp_blocks.csv` | 2 blocks | block means of `mtp_runs.csv` | independent recompute |
 | `results/ncmoe_probe_29b.csv` | 3 configs | `data/raw/p4/probe-results.txt` | `PROBE_<config>=` presence |
 | `results/ncmoe_sweep_28b.csv` | 5 configs | bench clip 2026-10-18 §04 | provenance section present |
 | `results/moe_cache.csv` | 8 configs | bench clip 2026-10-18 §04/§06/§07 | provenance section present |
@@ -36,3 +38,8 @@ Legend:
 
 Adding a row to a hand-transcribed table requires naming its section in
 `sources-bench.json`; the traceability check fails any row without one.
+
+Marked headline values use [`data/claims.json`](claims.json): each marker in the
+article is bound to a table row, field, and format. Figures are mapped to their
+source tables in [`data/figure-sources.json`](figure-sources.json); the gate
+fails on a missing source or an unreadable image.

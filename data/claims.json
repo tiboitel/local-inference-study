@@ -1,0 +1,14 @@
+{
+  "mtp_tg_off": {"table": "mtp_ab.csv", "where": {"arm": "off"}, "field": "tg_mean", "format": ".2f"},
+  "mtp_tg_on": {"table": "mtp_ab.csv", "where": {"arm": "on"}, "field": "tg_mean", "format": ".2f"},
+  "mtp_delta": {"table": "mtp_comparison.csv", "where": {"comparison": "tg"}, "field": "difference", "format": ".2f"},
+  "mtp_delta_pct": {"table": "mtp_comparison.csv", "where": {"comparison": "tg"}, "field": "difference_pct", "format": ".1f"},
+  "mtp_ci_half": {"table": "mtp_comparison.csv", "where": {"comparison": "tg"}, "field": "ci95_halfwidth", "format": ".2f"},
+  "mtp_accept": {"table": "mtp_ab.csv", "where": {"arm": "on"}, "field": "accept_mean", "format": ".3f"},
+  "cache_off": {"table": "moe_cache.csv", "where": {"config": "ncmoe20_auto", "ctx": "1024"}, "field": "pp_t_s", "format": ".1f"},
+  "cache_on": {"table": "moe_cache.csv", "where": {"config": "ncmoe20_moe_on", "ctx": "1024"}, "field": "pp_t_s", "format": ".1f"},
+  "depth0_tg": {"table": "deep_vs_depth0.csv", "where": {"mode": "depth0_llama_bench"}, "field": "tg_t_s", "format": ".1f"},
+  "deep_tg": {"table": "deep_vs_depth0.csv", "where": {"mode": "deep_server_measured"}, "field": "tg_t_s", "format": ".1f"},
+  "coding_passes": {"table": "coding_overall.csv", "where": {}, "field": "passes", "format": "d"},
+  "coding_runs": {"table": "coding_overall.csv", "where": {}, "field": "runs", "format": "d"}
+}

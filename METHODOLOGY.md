@@ -32,6 +32,25 @@ SEM, and Student-t intervals are computed directly from the kept runs by
 `scripts/build_results.py` and independently re-derived by
 `scripts/check_traceability.py`.
 
+### Comparison interval
+
+Each arm's interval uses the two-sided Student-t multiplier with `n-1` degrees of
+freedom (`n=10`, multiplier 2.262). The MTP difference interval is **unpaired**:
+each request has a unique nonce, so the blocks are a design control, not a
+paired sample. It uses
+
+```
+SE_diff = sqrt(s_off^2 / n_off + s_on^2 / n_on)
+diff    = mean_on - mean_off
+CI95    = diff +/- t(df=min(n_off, n_on)-1) * SE_diff
+```
+
+The conservative multiplier `t(9)=2.262` is used even though the
+Welch–Satterthwaite degrees of freedom are about 9.66. Both are reported in
+[`results/mtp_comparison.csv`](results/mtp_comparison.csv); block-level means are
+in [`results/mtp_blocks.csv`](results/mtp_blocks.csv). The gate recomputes both
+tables from the raw traces.
+
 ## Fidelity: match the shipped sampling
 
 Evaluation runs must use the sampling the deployment actually ships, taken from

@@ -2,6 +2,7 @@
 profile/
 *.gguf
 *.log
+dist/
 
 # python
 __pycache__/

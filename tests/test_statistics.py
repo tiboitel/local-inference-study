@@ -1,8 +1,9 @@
+import csv
 import math
 import statistics
 import unittest
 
-from util import load
+from util import ROOT, load
 
 
 class StatisticsTests(unittest.TestCase):
@@ -43,6 +44,31 @@ class StatisticsTests(unittest.TestCase):
         lo, hi = self.br.cluster_bootstrap(groups, self.br.cluster_run_rate)
         self.assertAlmostEqual(round(lo, 4), 0.2727, places=4)
         self.assertAlmostEqual(round(hi, 4), 0.8485, places=4)
+
+    def test_mtp_comparison_is_generated_and_tbased(self):
+        with (ROOT / "results" / "mtp_runs.csv").open() as fh:
+            rows = list(csv.DictReader(fh))
+        off = [float(r["tg_t_s"]) for r in rows if r["arm"] == "off"]
+        on = [float(r["tg_t_s"]) for r in rows if r["arm"] == "on"]
+        with (ROOT / "results" / "mtp_comparison.csv").open() as fh:
+            comp = next(csv.DictReader(fh))
+        se = math.sqrt(statistics.stdev(off) ** 2 / len(off)
+                       + statistics.stdev(on) ** 2 / len(on))
+        half = self.br.t95(min(len(off), len(on))) * se
+        self.assertAlmostEqual(float(comp["difference"]), 23.77, places=2)
+        self.assertAlmostEqual(float(comp["se_diff"]), se, places=2)
+        self.assertAlmostEqual(float(comp["ci95_halfwidth"]), half, places=2)
+        self.assertEqual(comp["df"], "9")
+        self.assertAlmostEqual(float(comp["df_welch"]), 9.66, places=2)
+        self.assertIn("unpaired", comp["method"])
+
+    def test_block_means_are_present(self):
+        with (ROOT / "results" / "mtp_blocks.csv").open() as fh:
+            rows = list(csv.DictReader(fh))
+        self.assertEqual([r["block"] for r in rows], ["1", "2"])
+        for row in rows:
+            self.assertEqual((row["n_off"], row["n_on"]), ("5", "5"))
+            self.assertGreater(float(row["difference"]), 0)
 
 
 if __name__ == "__main__":

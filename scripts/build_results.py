@@ -152,6 +152,54 @@ def build_mtp(raw: Path, out: Path):
                "tg_sem", "tg_ci95", "accept_mean", "accept_sd", "vram_peak_mib",
                "ram_peak_mib"])
 
+    off = [r["tg_t_s"] for r in runs if r["arm"] == "off"]
+    on = [r["tg_t_s"] for r in runs if r["arm"] == "on"]
+    comparison = []
+    if len(off) > 1 and len(on) > 1:
+        n1, n2 = len(off), len(on)
+        s1, s2 = statistics.stdev(off), statistics.stdev(on)
+        se = math.sqrt(s1 * s1 / n1 + s2 * s2 / n2)
+        df_welch = ((s1 * s1 / n1 + s2 * s2 / n2) ** 2 /
+                    ((s1 * s1 / n1) ** 2 / (n1 - 1) +
+                     (s2 * s2 / n2) ** 2 / (n2 - 1)))
+        df = min(n1, n2) - 1  # conservative; no SciPy dependency
+        tcrit = t95(df + 1)
+        diff = mean(on) - mean(off)
+        half = tcrit * se
+        comparison.append({
+            "comparison": "tg", "arm_a": "off", "arm_b": "on",
+            "n_a": n1, "n_b": n2,
+            "mean_a": round(mean(off), 2), "mean_b": round(mean(on), 2),
+            "difference": round(diff, 2),
+            "difference_pct": round(diff / mean(off) * 100, 1),
+            "se_diff": round(se, 2), "df": df,
+            "df_welch": round(df_welch, 2), "tcrit": round(tcrit, 3),
+            "ci95_halfwidth": round(half, 2),
+            "ci95_lo": round(diff - half, 2),
+            "ci95_hi": round(diff + half, 2),
+            "method": "unpaired Welch SE; conservative t(df=min(n)-1)",
+        })
+    write_csv(out / "mtp_comparison.csv", comparison,
+              ["comparison", "arm_a", "arm_b", "n_a", "n_b", "mean_a",
+               "mean_b", "difference", "difference_pct", "se_diff", "df",
+               "df_welch", "tcrit", "ci95_halfwidth", "ci95_lo", "ci95_hi",
+               "method"])
+
+    blocks = []
+    for block in (1, 2):
+        a = [r["tg_t_s"] for r in runs
+             if r["arm"] == "off" and r["block"] == block]
+        b = [r["tg_t_s"] for r in runs
+             if r["arm"] == "on" and r["block"] == block]
+        blocks.append({
+            "block": block, "n_off": len(a), "n_on": len(b),
+            "off_mean": round(mean(a), 2) if a else None,
+            "on_mean": round(mean(b), 2) if b else None,
+            "difference": round(mean(b) - mean(a), 2) if a and b else None,
+        })
+    write_csv(out / "mtp_blocks.csv", blocks,
+              ["block", "n_off", "n_on", "off_mean", "on_mean", "difference"])
+
 
 # --- 29B ncmoe load probe -------------------------------------------------
 
@@ -313,6 +361,8 @@ def validate_inputs(raw: Path, sources: Path) -> list[str]:
     if len(mtp_files) != 20:
         problems.append(f"mtp: expected 20 run traces, found {len(mtp_files)}")
     seen, per_arm, blocks = set(), {"off": 0, "on": 0}, set()
+    per_block = {(arm, block): 0 for arm in ("off", "on") for block in (1, 2)}
+    prompts: dict[tuple[str, int], list[int]] = {}
     for p in mtp_files:
         parts = p.stem.split("-")
         if (len(parts) != 3 or parts[0] not in per_arm
@@ -324,6 +374,7 @@ def validate_inputs(raw: Path, sources: Path) -> list[str]:
             problems.append(f"mtp: duplicate run {arm}-{block}-{run}")
         seen.add((arm, block, run))
         per_arm[arm] += 1
+        per_block[(arm, int(block[1:]))] += 1
         blocks.add(block)
         try:
             d = json.loads(p.read_text())
@@ -339,6 +390,8 @@ def validate_inputs(raw: Path, sources: Path) -> list[str]:
             v = t.get(key)
             if not isinstance(v, (int, float)) or not math.isfinite(v):
                 problems.append(f"mtp: {p.name} timings.{key} is not finite")
+        if isinstance(t.get("prompt_n"), int):
+            prompts.setdefault((arm, int(block[1:])), []).append(t["prompt_n"])
         if t.get("cache_n") != 0:
             problems.append(f"mtp: {p.name} cache_n={t.get('cache_n')} (not cold)")
         if d.get("finish_reason") not in ("stop", "length"):
@@ -349,10 +402,43 @@ def validate_inputs(raw: Path, sources: Path) -> list[str]:
             if not isinstance(v, (int, float)) or not math.isfinite(v):
                 problems.append(f"mtp: {p.name} peaks.{key} is not finite")
     for arm, n in per_arm.items():
-        if n < 5:
-            problems.append(f"mtp: arm {arm} has {n} runs (need >=5)")
+        if n != 10:
+            problems.append(f"mtp: arm {arm} has {n} runs (need exactly 10)")
+    for (arm, block), n in per_block.items():
+        if n != 5:
+            problems.append(
+                f"mtp: arm {arm} block {block} has {n} runs (need exactly 5)")
     if blocks and blocks != {"b1", "b2"}:
         problems.append(f"mtp: blocks {sorted(blocks)} != ['b1', 'b2']")
+    for (arm, block), vals in prompts.items():
+        if vals and max(vals) - min(vals) > 16:
+            problems.append(
+                f"mtp: arm {arm} block {block} prompt spread "
+                f"{max(vals) - min(vals)} tokens (need <=16)")
+    for arm in ("off", "on"):
+        for block in (1, 2):
+            s = mtp_dir / f"summary-{arm}-b{block}.json"
+            if not s.exists():
+                problems.append(f"mtp: missing {s.name}")
+                continue
+            try:
+                d = json.loads(s.read_text())
+            except (OSError, json.JSONDecodeError) as exc:
+                problems.append(f"mtp: {s.name} is not valid JSON ({exc})")
+                continue
+            if d.get("arm") != arm or d.get("block") != block:
+                problems.append(f"mtp: {s.name} arm/block mismatch")
+            kept, attempts = d.get("kept"), d.get("attempts")
+            failures = d.get("failures")
+            if kept != 5:
+                problems.append(f"mtp: {s.name} kept={kept} != 5")
+            if not isinstance(failures, list):
+                problems.append(f"mtp: {s.name} failures is not a list")
+            elif attempts != kept + len(failures):
+                problems.append(
+                    f"mtp: {s.name} attempts={attempts} != kept+failures")
+            if not d.get("finished_at"):
+                problems.append(f"mtp: {s.name} missing finished_at")
 
     coding_files = sorted(coding_dir.glob("run-*.json")) if coding_dir.exists() else []
     if len(coding_files) != 33:

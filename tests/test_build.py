@@ -42,6 +42,27 @@ class BuildTests(unittest.TestCase):
         problems = self.br.validate_inputs(self.raw, self.sources)
         self.assertTrue(any("expected 20" in p for p in problems))
 
+    def test_validate_rejects_block_count_and_prompt_drift(self):
+        (self.raw / "mtp" / "off-b1-r1.json").unlink()
+        problems = self.br.validate_inputs(self.raw, self.sources)
+        self.assertTrue(any("block 1 has 4" in p for p in problems))
+        (self.raw / "mtp" / "off-b1-r1.json").write_text(
+            (self.raw / "mtp" / "off-b1-r2.json").read_text())
+        path = self.raw / "mtp" / "off-b1-r2.json"
+        d = json.loads(path.read_text())
+        d["timings"]["prompt_n"] = 5000
+        path.write_text(json.dumps(d))
+        problems = self.br.validate_inputs(self.raw, self.sources)
+        self.assertTrue(any("prompt spread" in p for p in problems))
+
+    def test_validate_rejects_summary_mismatch(self):
+        path = self.raw / "mtp" / "summary-off-b1.json"
+        d = json.loads(path.read_text())
+        d["attempts"] = 99
+        path.write_text(json.dumps(d))
+        problems = self.br.validate_inputs(self.raw, self.sources)
+        self.assertTrue(any("attempts=99" in p for p in problems))
+
     def test_validate_rejects_warm_cache_and_non_finite(self):
         path = self.raw / "mtp" / "off-b1-r1.json"
         d = json.loads(path.read_text())
@@ -63,7 +84,7 @@ class BuildTests(unittest.TestCase):
         self.assertEqual(self.run_build(first).returncode, 0)
         self.assertEqual(self.run_build(second).returncode, 0)
         self.assertEqual(digest(first), digest(second))
-        self.assertEqual(len(digest(first)), 10)
+        self.assertEqual(len(digest(first)), 12)
 
     def test_bad_input_leaves_output_untouched(self):
         out = self.root / "out"

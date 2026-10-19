@@ -1,0 +1,2 @@
+comparison,arm_a,arm_b,n_a,n_b,mean_a,mean_b,difference,difference_pct,se_diff,df,df_welch,tcrit,ci95_halfwidth,ci95_lo,ci95_hi,method
+tg,off,on,10,10,14.79,38.56,23.77,160.7,2.02,9,9.66,2.262,4.58,19.19,28.34,unpaired Welch SE; conservative t(df=min(n)-1)

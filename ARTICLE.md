@@ -30,14 +30,21 @@ measured, configuration-specific effects. The tables can be regenerated from
 committed raw traces, but the experiment itself is not independently
 reproducible because the runner and coding harness are private.
 
-- **MTP roughly doubles deep decode at 64k:** 14.79 → 38.56 t/s (+160.7%),
-  while prefill is unchanged within noise. Cost: +993 MiB peak VRAM, ~1.7 GiB
-  host RAM. *(MEASURED + REGENERATED; live 29B profile.)*
-- **Depth-0 overstates long-context decode in this comparison:** 46.0 t/s at
-  depth 0 versus 15.3 t/s behind a full 64k prompt, about 3×. *(MEASURED;
-  both rows are 28B bench-sibling measurements, not the live 29B profile.)*
-- **The expert cache is a prefill lever, not a decode lever:** 308.5 → 775.7
-  t/s at 1k on the 28B bench sibling (~2.5×); deep decode stays ~14–15 t/s.
+- **MTP roughly doubles deep decode at 64k:**
+  <!-- claim:mtp_tg_off -->14.79<!-- /claim --> →
+  <!-- claim:mtp_tg_on -->38.56<!-- /claim --> t/s
+  (+<!-- claim:mtp_delta_pct -->160.7<!-- /claim -->%), while prefill is
+  unchanged within noise. Cost: +993 MiB peak VRAM, ~1.7 GiB host RAM.
+  *(MEASURED + REGENERATED; live 29B profile.)*
+- **Depth-0 overstates long-context decode in this comparison:**
+  <!-- claim:depth0_tg -->46.0<!-- /claim --> t/s at depth 0 versus
+  <!-- claim:deep_tg -->15.3<!-- /claim --> t/s behind a full 64k prompt, about
+  3×. *(MEASURED; both rows are 28B bench-sibling measurements, not the live 29B
+  profile.)*
+- **The expert cache is a prefill lever, not a decode lever:**
+  <!-- claim:cache_off -->308.5<!-- /claim --> →
+  <!-- claim:cache_on -->775.7<!-- /claim --> t/s at 1k on the 28B bench sibling
+  (~2.5×); deep decode stays ~14–15 t/s.
   *(MEASURED on the sibling; REGENERATED from a non-self-contained ledger.)*
 
 ![Three measured levers](figures/fig_overview.png)
@@ -94,8 +101,8 @@ available here, that changes the decode rate substantially:
 
 | Measurement | Decode throughput |
 |---|---|
-| `llama-bench` token generation, depth 0 | **46.0 t/s** |
-| After a full 64k prompt, measured on the server | **15.3 t/s** |
+| `llama-bench` token generation, depth 0 | **<!-- claim:depth0_tg -->46.0<!-- /claim --> t/s** |
+| After a full 64k prompt, measured on the server | **<!-- claim:deep_tg -->15.3<!-- /claim --> t/s** |
 
 *Source: 28B bench sibling. The depth-0 row is `llama-bench`; the deep row is a
 server-measured request. These two rows do not carry a matched VRAM reading; the
@@ -177,9 +184,9 @@ small context:
 
 | Configuration (small ctx) | Prefill PP |
 |---|---:|
-| `ncmoe=20`, cache **off** | 308.5 t/s |
+| `ncmoe=20`, cache **off** | <!-- claim:cache_off -->308.5<!-- /claim --> t/s |
 | `ncmoe=20`, cache **soft** | 313.2 t/s |
-| `ncmoe=20`, cache **on** | **775.7 t/s** |
+| `ncmoe=20`, cache **on** | **<!-- claim:cache_on -->775.7<!-- /claim --> t/s** |
 
 *MEASURED on the 28B bench sibling at 1k context, not on the live 29B MTP
 profile; REGENERATED from a non-self-contained source ledger. The cache spends
@@ -222,16 +229,24 @@ model verifies. A protocol-faithful on/off A/B at 64k (*live 29B MTP profile*):
 |---|---:|---:|---:|
 | Kept runs | 10 | 10 | — |
 | Prompt tokens (mean) | 57,881 | 57,880 | — |
-| Deep decode (TG) | 14.79 t/s | **38.56 t/s** | **+23.77 (+160.7%)** |
-| TG SEM / 95% CI (t, n=10) | 0.38 / ±0.86 | 1.99 / ±4.50 | ±4.58 |
+| Deep decode (TG) | <!-- claim:mtp_tg_off -->14.79<!-- /claim --> t/s | **<!-- claim:mtp_tg_on -->38.56<!-- /claim --> t/s** | **+<!-- claim:mtp_delta -->23.77<!-- /claim --> (+<!-- claim:mtp_delta_pct -->160.7<!-- /claim -->%)** |
+| TG SEM / 95% CI (per arm, t, n=10) | 0.38 / ±0.86 | 1.99 / ±4.50 | ±<!-- claim:mtp_ci_half -->4.58<!-- /claim --> (unpaired) |
 | Prefill (PP) | 645.10 t/s | 637.39 t/s | −1.19% (inside noise) |
-| MTP acceptance | — | 0.838 (sd 0.070) | — |
+| MTP acceptance | — | <!-- claim:mtp_accept -->0.838<!-- /claim --> (sd 0.070) | — |
 | Peak VRAM | 10,595 MiB | 11,588 MiB | **+993 MiB** |
 
 *MEASURED + REGENERATED. Live 29B MTP profile, 10 kept runs per arm, ~57.9k
 prompt, interleaved `off → on → on → off`, cold prefill on every kept run.
 Cost: +993 MiB peak VRAM and ~1.7 GiB host RAM. Not REPRODUCIBLE: the runner is
-private.*
+private. The difference interval is **unpaired**: the arms use independent
+requests with unique nonces, so the blocks are a design control, not pairing. It
+uses a Welch standard error with the conservative multiplier
+`t(df=min(n)-1)=2.262` (Welch df≈9.66), generated in
+[mtp_comparison.csv](results/mtp_comparison.csv); no paired-difference interval
+is claimed. Block means are in [mtp_blocks.csv](results/mtp_blocks.csv): both
+blocks moved in the same direction (off 15.04/14.53 t/s, on 40.69/36.42 t/s;
+differences +25.65/+21.89). Those are descriptive block means, not a
+block-level confidence interval.*
 
 ![MTP on/off at 64k](figures/fig_mtp_ab.png)
 
@@ -359,7 +374,7 @@ versus prompt-contract ambiguity remains a limitation.
 
 | Metric | Result |
 |---|---|
-| Run-level completion | **19/33 = 57.6%** (run-level Wilson 95% CI 40.8–72.8) |
+| Run-level completion | **<!-- claim:coding_passes -->19<!-- /claim -->/<!-- claim:coding_runs -->33<!-- /claim --> = 57.6%** (run-level Wilson 95% CI 40.8–72.8) |
 | Task-clustered bootstrap, run rate | **95% CI 27.3–84.9%** (resamples the 11 tasks, not the 33 runs) |
 | Tasks passing all 3 runs | **6/11 = 54.5%** |
 | Tasks passing ≥1 run | **7/11 = 63.6%** |

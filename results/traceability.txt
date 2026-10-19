@@ -6,10 +6,13 @@ stage_integrity: OK
 stage_recompute: OK
 stage_invariants: OK
 stage_claims: OK
+stage_claim_registry: OK
+stage_figures: OK
+stage_bench_provenance: OK
 stage_staleness: OK
 mtp_runs: 20
 coding_runs: 33
-result_tables: 10
+result_tables: 12
 
 tables:
 - results/coding_eval.csv
@@ -18,6 +21,8 @@ tables:
 - results/deep_vs_depth0.csv
 - results/moe_cache.csv
 - results/mtp_ab.csv
+- results/mtp_blocks.csv
+- results/mtp_comparison.csv
 - results/mtp_runs.csv
 - results/ncmoe_probe_29b.csv
 - results/ncmoe_sweep_28b.csv

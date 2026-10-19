@@ -53,3 +53,28 @@ jobs:
         with:
           name: traceability-report
           path: results/traceability.txt
+
+  documented-reproduction:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: Install dependencies
+        run: pip install -r requirements-dev.txt
+
+      - name: Run the documented public workflow
+        run: |
+          python scripts/build_results.py --raw data/raw --out results
+          python scripts/make_figures.py --out "${RUNNER_TEMP}/figures"
+          python scripts/check_traceability.py --report results/traceability.txt
+          python scripts/manifest.py --check
+          python -m pytest -q
+          bash scripts/check_hygiene.sh
+
+      - name: Require no generated drift
+        run: git diff --exit-code -- results data

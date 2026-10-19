@@ -38,12 +38,14 @@ class RecomputeTests(unittest.TestCase):
         self.tmp.cleanup()
 
     def test_mtp_recompute_matches_built_tables(self):
-        runs, agg = self.ct.recompute_mtp(self.mtp)
+        runs, agg, comp, blocks = self.ct.recompute_mtp(self.mtp)
         self.assertEqual(len(runs), 20)
         self.assertEqual([a["arm"] for a in agg], ["off", "on"])
         self.assertEqual([a["n_kept"] for a in agg], [10, 10])
         self.assertAlmostEqual(agg[0]["tg_mean"], 10.3, places=2)
         self.assertAlmostEqual(agg[1]["tg_mean"], 20.3, places=2)
+        self.assertEqual(comp[0]["df"], 9)
+        self.assertEqual(blocks[0]["n_off"], 5)
         self.ct.problems.clear()
         self.ct.stage_recompute(self.mtp, self.coding)
         self.assertEqual(self.ct.problems, [])

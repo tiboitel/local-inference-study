@@ -1,3 +1,4 @@
+import json
 import re
 import subprocess
 import sys
@@ -60,6 +61,23 @@ class DocumentationTests(unittest.TestCase):
         self.assertEqual(result.returncode, 0, result.stderr)
         self.assertIn("--off-url", result.stdout)
         self.assertIn("procedure", result.stdout.lower())
+
+    def test_release_packager_help(self):
+        result = subprocess.run(
+            [sys.executable, str(ROOT / "scripts" / "package_release.py"),
+             "--help"],
+            capture_output=True, text=True)
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertIn("--version", result.stdout)
+
+    def test_claim_and_figure_maps_cover_headlines(self):
+        claims = json.loads((ROOT / "data" / "claims.json").read_text())
+        for cid in ("mtp_tg_off", "mtp_tg_on", "mtp_ci_half",
+                    "cache_on", "depth0_tg", "coding_passes"):
+            self.assertIn(cid, claims)
+        figures = json.loads((ROOT / "data" / "figure-sources.json").read_text())
+        for name in ("fig_mtp_ab.png", "fig_overview.png", "fig_setup.svg"):
+            self.assertIn(name, figures)
 
 
 if __name__ == "__main__":

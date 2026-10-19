@@ -39,7 +39,9 @@ def rel(p: Path) -> str:
 
 
 def input_files() -> list[Path]:
-    files = [DATA / "sources-bench.json"]
+    files = [p for p in (DATA / "sources-bench.json",
+                         DATA / "claims.json",
+                         DATA / "figure-sources.json") if p.exists()]
     for p in sorted(RAW.rglob("*")):
         if p.is_file() and p not in MANIFESTS and p.suffix != ".log":
             files.append(p)

@@ -26,7 +26,7 @@ A/B comparison; it does not reproduce the exact prompt family or magnitudes.
 
 | Published result | Labels | Trace / source | Rebuild |
 |---|---|---|---|
-| MTP decode 14.79 → 38.56 t/s at 64k | MEASURED, REGENERATED | `data/raw/mtp/` | `results/mtp_ab.csv` |
+| MTP decode 14.79 → 38.56 t/s at 64k | MEASURED, REGENERATED | `data/raw/mtp/` | `results/mtp_ab.csv`, `results/mtp_comparison.csv` |
 | MTP per-run distribution and block means | MEASURED, REGENERATED | `data/raw/mtp/` | `results/mtp_runs.csv` |
 | Depth-0 46.0 t/s vs deep 15.3 t/s | MEASURED (28B bench sibling, two configurations) | `data/sources-bench.json` §06/§07 | `results/deep_vs_depth0.csv` |
 | Expert cache 308.5 → 775.7 t/s at 1k | MEASURED (28B sibling), REGENERATED from a non-self-contained ledger | `data/sources-bench.json` §04 | `results/moe_cache.csv` |
@@ -39,6 +39,23 @@ The bench-derived rows are hand-transcribed from a dated source clip and carry a
 section reference in `data/sources-bench.json`. Regenerating their CSV does not
 make the underlying measurement self-contained; it re-derives the table from a
 committed ledger.
+
+## Claim and figure provenance
+
+- **Claim registry.** [`data/claims.json`](data/claims.json) binds each marked
+  headline value to a table, row selector, field, and display format. Markers in
+  the article and README are checked against the recomputed tables; a number in
+  the wrong sentence now fails the gate.
+- **Figure map.** [`data/figure-sources.json`](data/figure-sources.json) lists the
+  source table(s) for every rendered figure. The gate fails on a missing source,
+  an unmapped image, or an unreadable PNG/SVG.
+- **Visual limits.** Figure *pixels* are not compared across platforms. The gate
+  verifies source tables, mapping, and file validity; it does not prove that a
+  chart looks correct.
+- **Comparison method.** The MTP difference is unpaired (independent nonces),
+  uses a Welch standard error and conservative `t(df=9)=2.262`, and is generated
+  in [`results/mtp_comparison.csv`](results/mtp_comparison.csv). Block means are
+  in [`results/mtp_blocks.csv`](results/mtp_blocks.csv).
 
 ## Release checklist
 
@@ -53,11 +70,11 @@ Status values: **DONE**, **PARTIAL**, **NOT DONE**.
 | 5 | Pin model revision, model-file hash, runtime commit, flags and dependencies | **PARTIAL** | Runtime commit, flags, Python and matplotlib are pinned; model hash is unavailable and the GPU driver record is post-hoc, not run-time. |
 | 6 | Document GPU driver, OS, power settings and background-load controls | **PARTIAL** | OS and post-hoc driver/power capture are in `HARDWARE-AND-RUNTIME.md`; the run-time driver version and background-load controls were not recorded. |
 | 7 | Provide a script that independently recalculates statistics and intervals | **DONE** | `scripts/check_traceability.py` re-derives every table, including the task-clustered bootstrap, independently of the builder. |
-| 8 | Show individual measurements and paired A/B differences | **PARTIAL** | Every MTP run is in `results/mtp_runs.csv` and `figures/fig_mtp_runs.png`. The arms are **not paired**: each request has a unique nonce, so no paired interval is claimed. |
+| 8 | Show individual measurements and the A/B difference | **DONE, design-limited** | Every run is in `results/mtp_runs.csv`; the unpaired difference interval and block means are generated in `results/mtp_comparison.csv` and `results/mtp_blocks.csv`. The arms are **not paired** (unique nonce per request), so a paired interval cannot be claimed. |
 | 9 | Document the source of the noise floor and handling of exploratory sweeps | **PARTIAL** | The ~4% threshold is documented as an operational heuristic; the control series behind it was not retained. Exploratory sweeps are labelled as hand-transcribed bench rows. |
-| 10 | Run all data-generation and traceability checks from a clean checkout | **PARTIAL** | The commands pass locally and are wired into `.github/workflows/validate.yml`; the workflow has not yet been observed on GitHub. |
+| 10 | Run all data-generation and traceability checks from a clean checkout | **PARTIAL** | `.github/workflows/validate.yml` now has a `documented-reproduction` job that runs the public commands and fails on a `results/` or `data/` diff. The workflow has not yet been observed on GitHub. |
 | 11 | Record exact commands, expected outputs and environment-specific differences | **PARTIAL** | `REPRODUCTION.md` lists commands; `results/traceability.txt` is the expected gate output. Figure bytes are environment-specific and are not compared across platforms. |
-| 12 | Tag the article, results and raw data as a versioned release | **NOT DONE** | No release tag or DOI has been created. |
+| 12 | Tag the article, results and raw data as a versioned release | **DONE** | Annotated tag `v0.2.0`; `scripts/package_release.py` writes a deterministic tarball and SHA-256 sidecar. No DOI. |
 
 ## Known evidence gaps
 
@@ -83,6 +100,7 @@ python scripts/manifest.py --check
 python scripts/make_figures.py
 python -m pytest -q
 bash scripts/check_hygiene.sh
+python scripts/package_release.py --version 0.2.0
 ```
 
 The first four commands rebuild every published table and figure; the gate also

@@ -25,7 +25,7 @@ prompt. Those are recorded per experiment in `mtp/config.json`,
 time are explicitly `null` with a note. In particular, the model artifact hash
 and the prompt hash are `null`: they were not captured and cannot be backfilled
 without rerunning. The evidence labels and remaining gaps are listed in
-[EVIDENCE.md](../EVIDENCE.md).
+[EVIDENCE.md](../EVIDENCE.md) and [PROMPT-PROVENANCE.md](../PROMPT-PROVENANCE.md).
 
 ## Sanitization and limits
 

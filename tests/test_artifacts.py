@@ -15,8 +15,9 @@ FIGURES = [
 DIAGRAMS = ["fig_setup.svg"]
 TABLES = [
     "coding_eval.csv", "coding_overall.csv", "coding_summary.csv",
-    "deep_vs_depth0.csv", "moe_cache.csv", "mtp_ab.csv", "mtp_runs.csv",
-    "ncmoe_probe_29b.csv", "ncmoe_sweep_28b.csv", "prefill_vs_ctx.csv",
+    "deep_vs_depth0.csv", "moe_cache.csv", "mtp_ab.csv", "mtp_blocks.csv",
+    "mtp_comparison.csv", "mtp_runs.csv", "ncmoe_probe_29b.csv",
+    "ncmoe_sweep_28b.csv", "prefill_vs_ctx.csv",
 ]
 
 
