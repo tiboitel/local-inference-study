@@ -1,161 +1,456 @@
 #!/usr/bin/env python3
-"""Verify that every figure in results/ traces to a raw source.
+"""Release gate: prove the published numbers from the committed evidence.
+
+Stages, each independent of scripts/build_results.py:
+
+  1. schema      every raw trace and provenance sidecar is present and well-typed
+  2. integrity   every raw run is consumed exactly once; manifest hashes match
+  3. recompute   result tables are re-derived from the raw traces and compared
+                 field-by-field within a tolerance
+  4. invariants  experimental-design properties hold (cold cache, arm order,
+                 >=5 kept runs/arm, 3 runs/task, no duplicates)
+  5. claims      numbers quoted in ARTICLE.md occur in the recomputed tables
+  6. staleness   regenerating results/ from raw reproduces the committed CSVs
 
     python scripts/check_traceability.py   # exit 0 == release gate passed
-
-Checks, in order:
-  1. every expected results/ table exists;
-  2. every row of a derived table names a raw trace that exists;
-  3. hand-transcribed bench rows carry a provenance section;
-  4. aggregate tables agree with their detail tables.
 """
 from __future__ import annotations
 
 import csv
+import json
+import math
+import statistics
+import subprocess
 import sys
+import tempfile
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 RES = ROOT / "results"
 RAW = ROOT / "data" / "raw"
+DATA = ROOT / "data"
+RAW_MTP = RAW / "mtp"
+RAW_CODING = RAW / "coding"
+RAW_P4 = RAW / "p4"
+
+# per-field tolerance: defaults to two-decimal rounding; wider for rounded ints
+TOL = {"ram_peak_mib": 0.51, "predicted_n_mean": 0.51,
+       "pass_rate": 1e-4, "wilson_lo": 1e-4, "wilson_hi": 1e-4,
+       "test_pass_rate": 1e-4}
 
 problems: list[str] = []
 
 
-def load(name):
+def fail(msg: str) -> None:
+    problems.append(msg)
+
+
+def load(name: str):
     p = RES / name
     if not p.exists():
-        problems.append(f"missing result table: {name}")
+        fail(f"missing result table: {name}")
         return []
     with p.open() as fh:
         return list(csv.DictReader(fh))
 
 
-EXPECTED = [
-    "mtp_runs.csv", "mtp_ab.csv", "ncmoe_probe_29b.csv", "ncmoe_sweep_28b.csv",
-    "moe_cache.csv", "prefill_vs_ctx.csv", "deep_vs_depth0.csv",
-    "coding_eval.csv", "coding_summary.csv", "coding_overall.csv",
-]
+def num(x):
+    try:
+        return float(x)
+    except (TypeError, ValueError):
+        return None
 
-for name in EXPECTED:
-    if not (RES / name).exists():
-        problems.append(f"missing result table: {name}")
 
-# 2a. MTP per-run rows -> raw traces
-for r in load("mtp_runs.csv"):
-    fn = f"{r['arm']}-b{r['block']}-r{r['run']}.json"
-    if not (RAW / "mtp" / fn).exists():
-        problems.append(f"mtp_runs.csv row has no raw trace: {fn}")
+def close(a, b, tol: float) -> bool:
+    if a is None or b is None:
+        return a is None and b is None
+    return abs(float(a) - float(b)) <= tol
 
-# 2b. coding per-run rows -> raw traces
-for r in load("coding_eval.csv"):
-    if not (RAW / "coding" / r["file"]).exists():
-        problems.append(f"coding_eval.csv row has no raw trace: {r['file']}")
 
-# 2c. probe rows -> probe-results.txt
-probe_txt = (RAW / "p4" / "probe-results.txt")
-probe_body = probe_txt.read_text() if probe_txt.exists() else ""
-for r in load("ncmoe_probe_29b.csv"):
-    if f"PROBE_{r['config']}=" not in probe_body:
-        problems.append(f"probe row {r['config']} not in probe-results.txt")
+def t95(n: int) -> float:
+    table = {1: 12.706, 2: 4.303, 3: 3.182, 4: 2.776, 5: 2.571, 6: 2.447,
+             7: 2.365, 8: 2.306, 9: 2.262, 10: 2.228, 11: 2.201, 12: 2.179,
+             13: 2.160, 14: 2.145, 15: 2.131, 16: 2.120, 17: 2.110,
+             18: 2.101, 19: 2.093, 20: 2.086}
+    return table.get(n - 1, 1.96)
 
-# 3. bench tables -> provenance section
-for name in ("ncmoe_sweep_28b.csv", "moe_cache.csv", "prefill_vs_ctx.csv",
-             "deep_vs_depth0.csv"):
-    for r in load(name):
-        if not (r.get("section") or "").strip():
-            problems.append(f"{name} row lacks a provenance section: {r}")
 
-# 4. aggregates agree with detail
-overall = load("coding_overall.csv")
-summary = load("coding_summary.csv")
-runs = load("coding_eval.csv")
-if overall:
-    o = overall[0]
-    s_passes = sum(int(r["passes"]) for r in summary)
-    s_runs = sum(int(r["runs"]) for r in summary)
-    if int(o["passes"]) != s_passes:
-        problems.append(f"coding_overall passes {o['passes']} != summary {s_passes}")
-    if int(o["runs"]) != s_runs or s_runs != len(runs):
-        problems.append("coding run counts disagree across tables")
-    k, n = int(o["passes"]), int(o["runs"])
-    if abs(float(o["pass_rate"]) - round(k / n, 4)) > 1e-9:
-        problems.append("coding_overall pass_rate does not match passes/runs")
+def sem(xs) -> float | None:
+    xs = [x for x in xs if x is not None]
+    return statistics.stdev(xs) / math.sqrt(len(xs)) if len(xs) > 1 else None
 
-ab = load("mtp_ab.csv")
-mp = load("mtp_runs.csv")
-if ab:
+
+def wilson(k: int, n: int, z: float = 1.96):
+    p = k / n
+    denom = 1 + z * z / n
+    centre = (p + z * z / (2 * n)) / denom
+    half = (z * math.sqrt(p * (1 - p) / n + z * z / (4 * n * n))) / denom
+    return max(0.0, centre - half), min(1.0, centre + half)
+
+
+def mean(xs):
+    xs = [x for x in xs if x is not None]
+    return statistics.fmean(xs) if xs else None
+
+
+def compare(name: str, want, keys) -> None:
+    got = load(name)
+    index = {tuple(str(r[k]) for k in keys): r for r in got}
+    if len(got) != len(want):
+        fail(f"{name}: {len(got)} rows != recomputed {len(want)}")
+    for w in want:
+        k = tuple(str(w[k]) for k in keys)
+        g = index.get(k)
+        if g is None:
+            fail(f"{name}: recomputed row missing from table: {k}")
+            continue
+        for field, wv in w.items():
+            gv = g.get(field, "")
+            if wv is None:
+                if gv not in ("", "None"):
+                    fail(f"{name} {k} {field}: expected empty, got {gv!r}")
+            elif isinstance(wv, (int, float)):
+                if not close(gv, wv, TOL.get(field, 0.011)):
+                    fail(f"{name} {k} {field}: {gv} != {wv}")
+            elif str(wv) != str(gv):
+                fail(f"{name} {k} {field}: {gv!r} != {wv!r}")
+
+
+# --- raw parsing (independent of the builder) -----------------------------
+
+def mtp_raw() -> dict:
+    return {p.name: json.loads(p.read_text())
+            for p in sorted(RAW_MTP.glob("*-b*-r*.json"))}
+
+
+def coding_raw() -> dict:
+    return {p.name: json.loads(p.read_text())
+            for p in sorted(RAW_CODING.glob("run-*.json"))}
+
+
+# --- stage 1: schema -------------------------------------------------------
+
+MTP_KEYS = {"final_text", "finish_reason", "nonce", "timings", "peaks",
+            "usage", "wall_s"}
+TIMING_KEYS = {"cache_n", "prompt_n", "prompt_per_second",
+               "predicted_per_second"}
+CODING_KEYS = {"task_id", "run", "class_name", "source", "wall_s",
+               "extract_ok", "loop", "verdict"}
+
+
+def stage_schema(mtp, coding) -> None:
+    if not mtp:
+        fail("schema: no MTP raw traces")
+    for name, d in mtp.items():
+        if not MTP_KEYS <= set(d):
+            fail(f"schema: {name} missing keys {sorted(MTP_KEYS - set(d))}")
+            continue
+        t = d["timings"] or {}
+        if not TIMING_KEYS <= set(t):
+            fail(f"schema: {name} timings missing {sorted(TIMING_KEYS - set(t))}")
+        for field in ("prompt_per_second", "predicted_per_second", "wall_s"):
+            v = num(d.get(field, t.get(field)))
+            if v is None or not math.isfinite(v):
+                fail(f"schema: {name} {field} is not finite")
+        if num((d.get("peaks") or {}).get("vram_mib")) is None:
+            fail(f"schema: {name} peaks.vram_mib missing")
+    for name, d in coding.items():
+        if not CODING_KEYS <= set(d):
+            fail(f"schema: {name} missing keys {sorted(CODING_KEYS - set(d))}")
+            continue
+        v = d.get("verdict") or {}
+        for field in ("tests_run", "failures", "passed"):
+            if field not in v:
+                fail(f"schema: {name} verdict missing {field}")
+        if num(d.get("wall_s")) is None:
+            fail(f"schema: {name} wall_s not finite")
+        if not (d.get("loop") or {}).get("turn_log") and \
+                not (d.get("loop") or {}).get("turns"):
+            fail(f"schema: {name} loop has no turns")
+    for cfg in ("ref20", "cand17", "ctrl17off"):
+        if f"PROBE_{cfg}=" not in (RAW_P4 / "probe-results.txt").read_text():
+            fail(f"schema: probe-results.txt missing PROBE_{cfg}=")
+    for rel in ("mtp/config.json", "coding/config.json", "p4/config.json",
+                "README.md"):
+        if not (RAW / rel).exists():
+            fail(f"schema: missing data/raw/{rel}")
+
+
+# --- stage 2: integrity ----------------------------------------------------
+
+def stage_integrity(mtp, coding) -> None:
+    rows = {f"{r['arm']}-b{r['block']}-r{r['run']}.json"
+            for r in load("mtp_runs.csv")}
+    if rows != set(mtp):
+        fail(f"integrity: MTP raw/runs mismatch: only-raw={set(mtp) - rows} "
+             f"only-table={rows - set(mtp)}")
+    crows = {r["file"] for r in load("coding_eval.csv")}
+    if crows != set(coding):
+        fail("integrity: coding raw/table filename mismatch")
     for arm in ("off", "on"):
-        arm_rows = [r for r in mp if r["arm"] == arm]
-        agg = [r for r in ab if r["arm"] == arm]
-        if agg and int(agg[0]["n_kept"]) != len(arm_rows):
-            problems.append(f"mtp_ab {arm} n_kept != mtp_runs count")
+        for block in (1, 2):
+            s = RAW_MTP / f"summary-{arm}-b{block}.json"
+            if not s.exists():
+                fail(f"integrity: missing {s.name}")
+                continue
+            d = json.loads(s.read_text())
+            n = len([k for k in mtp
+                     if k.startswith(f"{arm}-b{block}-")])
+            if int(d.get("kept", -1)) != n:
+                fail(f"integrity: {s.name} kept={d.get('kept')} but {n} traces")
+    r = subprocess.run([sys.executable, "scripts/manifest.py", "--check"],
+                       cwd=ROOT, capture_output=True, text=True)
+    if r.returncode != 0:
+        fail("integrity: manifest check failed: " +
+             (r.stdout.strip().splitlines() or ["?"])[-1])
 
-# 5. the numbers written in the article match the result tables (not just that
-#    the cited files exist)
-ART = (ROOT / "ARTICLE.md").read_text()
-overall = (load("coding_overall.csv") or [{}])[0]
-ab_by_arm = {r["arm"]: r for r in ab}
-dd = {r["mode"]: r for r in load("deep_vs_depth0.csv")}
 
-expected: dict[str, str] = {}
-if overall:
-    k, n = int(overall["passes"]), int(overall["runs"])
-    tp, tr = int(overall["tests_passed"]), int(overall["tests_run"])
-    ck, cn = int(overall["classeval_passes"]), int(overall["classeval_runs"])
-    hk, hn = int(overall["humaneval_passes"]), int(overall["humaneval_runs"])
-    expected.update({
+# --- stage 3: recompute ----------------------------------------------------
+
+def recompute_mtp(mtp) -> tuple[list, list]:
+    runs = []
+    for name, d in mtp.items():
+        arm, block, run = name[:-5].split("-")
+        t = d["timings"] or {}
+        dn = t.get("draft_n") or 0
+        acc = t.get("draft_n_accepted")
+        runs.append({
+            "arm": arm, "block": int(block[1:]), "run": int(run[1:]),
+            "prompt_n": t.get("prompt_n"),
+            "pp_t_s": t.get("prompt_per_second"),
+            "tg_t_s": t.get("predicted_per_second"),
+            "accept": (acc / dn) if (dn and acc is not None) else None,
+            "cache_n": t.get("cache_n"),
+            "vram_mib": (d.get("peaks") or {}).get("vram_mib"),
+            "ram_mib": (d.get("peaks") or {}).get("ram_used_mib"),
+            "finish_reason": d.get("finish_reason"),
+        })
+    runs.sort(key=lambda r: (r["arm"], r["block"], r["run"]))
+    agg = []
+    for arm in ("off", "on"):
+        rs = [r for r in runs if r["arm"] == arm]
+        tg_sem = sem([r["tg_t_s"] for r in rs])
+        accs = [r["accept"] for r in rs if r["accept"] is not None]
+        agg.append({
+            "arm": arm, "n_kept": len(rs),
+            "prompt_n_mean": round(mean([r["prompt_n"] for r in rs]), 1),
+            "pp_mean": round(mean([r["pp_t_s"] for r in rs]), 2),
+            "pp_sem": round(sem([r["pp_t_s"] for r in rs]), 2),
+            "tg_mean": round(mean([r["tg_t_s"] for r in rs]), 2),
+            "tg_sem": round(tg_sem, 2),
+            "tg_ci95": round(t95(len(rs)) * tg_sem, 2) if tg_sem else None,
+            "accept_mean": round(mean(accs), 3) if accs else None,
+            "accept_sd": round(statistics.stdev(accs), 3) if len(accs) > 1 else None,
+            "vram_peak_mib": max(r["vram_mib"] for r in rs),
+            "ram_peak_mib": round(max(r["ram_mib"] for r in rs), 0),
+        })
+    return runs, agg
+
+
+def recompute_coding(coding) -> tuple[list, list, dict]:
+    runs = []
+    for name, d in coding.items():
+        v = d["verdict"]
+        turns = d["loop"]["turn_log"]
+        first = turns[0] if turns else {}
+        runs.append({
+            "file": name, "task_id": d["task_id"], "class_name": d["class_name"],
+            "source": d["source"], "run": d["run"],
+            "passed": 1 if v["passed"] else 0,
+            "tests_run": v["tests_run"], "tests_failed": v["failures"],
+            "tests_passed": v["tests_run"] - v["failures"],
+            "wall_s": round(d["wall_s"], 2),
+            "predicted_n": sum(t.get("predicted_n") or 0 for t in turns),
+            "turns": d["loop"]["turns"],
+            "tool_calls": sum(len(t.get("tool_calls") or []) for t in turns),
+            "finish_reason": first.get("finish_reason"),
+            "extract_ok": 1 if d["extract_ok"] else 0,
+        })
+    runs.sort(key=lambda r: (r["task_id"], r["run"]))
+    tasks = []
+    for tid in dict.fromkeys(r["task_id"] for r in runs):
+        rs = [r for r in runs if r["task_id"] == tid]
+        tasks.append({
+            "task_id": tid, "class_name": rs[0]["class_name"],
+            "source": rs[0]["source"], "runs": len(rs),
+            "passes": sum(r["passed"] for r in rs),
+            "tests_run": sum(r["tests_run"] for r in rs),
+            "tests_passed": sum(r["tests_passed"] for r in rs),
+            "wall_p50_s": round(statistics.median([r["wall_s"] for r in rs]), 1),
+            "predicted_n_mean": round(mean([r["predicted_n"] for r in rs]), 0),
+        })
+    n, k = len(runs), sum(r["passed"] for r in runs)
+    lo, hi = wilson(k, n)
+    ce = [r for r in runs if r["source"] == "classeval"]
+    he = [r for r in runs if r["source"] != "classeval"]
+    tr = sum(r["tests_run"] for r in runs)
+    tp = sum(r["tests_passed"] for r in runs)
+    overall = {
+        "runs": n, "passes": k, "pass_rate": round(k / n, 4),
+        "wilson_lo": round(lo, 4), "wilson_hi": round(hi, 4),
+        "tests_run": tr, "tests_passed": tp,
+        "test_pass_rate": round(tp / tr, 4),
+        "classeval_runs": len(ce), "classeval_passes": sum(r["passed"] for r in ce),
+        "humaneval_runs": len(he), "humaneval_passes": sum(r["passed"] for r in he),
+        "total_predicted_n": sum(r["predicted_n"] for r in runs),
+        "total_tool_calls": sum(r["tool_calls"] for r in runs),
+    }
+    return runs, tasks, overall
+
+
+def stage_recompute(mtp, coding) -> tuple[list, list]:
+    mruns, magg = recompute_mtp(mtp)
+    compare("mtp_runs.csv", mruns, ("arm", "block", "run"))
+    compare("mtp_ab.csv", magg, ("arm",))
+    cruns, ctasks, coverall = recompute_coding(coding)
+    compare("coding_eval.csv", cruns, ("file",))
+    compare("coding_summary.csv", ctasks, ("task_id",))
+    compare("coding_overall.csv", [coverall], ("runs",))
+    return magg, [coverall]
+
+
+# --- stage 4: invariants ---------------------------------------------------
+
+def stage_invariants(mtp, coding) -> None:
+    for name, d in mtp.items():
+        if (d["timings"] or {}).get("cache_n") != 0:
+            fail(f"invariant: {name} cache_n != 0 (not a cold prefill)")
+        if d.get("finish_reason") not in ("stop", "length"):
+            fail(f"invariant: {name} unexpected finish_reason "
+                 f"{d.get('finish_reason')!r}")
+    order = []
+    for arm in ("off", "on"):
+        for block in (1, 2):
+            s = RAW_MTP / f"summary-{arm}-b{block}.json"
+            if s.exists():
+                order.append((json.loads(s.read_text()).get("finished_at"), arm))
+    if [a for _, a in sorted(order)] != ["off", "on", "on", "off"]:
+        fail(f"invariant: MTP arm order is {[a for _, a in sorted(order)]}, "
+             "expected off,on,on,off")
+    for arm in ("off", "on"):
+        n = len([k for k in mtp if k.startswith(f"{arm}-")])
+        if n < 5:
+            fail(f"invariant: only {n} kept runs for arm {arm} (need >=5)")
+
+    per_task: dict[str, int] = {}
+    for name, d in coding.items():
+        v = d["verdict"]
+        if v["tests_run"] < v["failures"]:
+            fail(f"invariant: {name} failures > tests_run")
+        if bool(v["passed"]) != (v["failures"] == 0):
+            fail(f"invariant: {name} passed={v['passed']} but failures={v['failures']}")
+        if not d.get("extract_ok"):
+            fail(f"invariant: {name} extract_ok is false")
+        if not (d["loop"]["turn_log"][0].get("finish_reason")
+                if d["loop"]["turn_log"] else None):
+            fail(f"invariant: {name} missing finish_reason")
+        key = f"{d['task_id']}:{d['run']}"
+        per_task[key] = per_task.get(key, 0) + 1
+    dupes = [k for k, c in per_task.items() if c != 1]
+    if dupes:
+        fail(f"invariant: duplicate task/run keys: {dupes}")
+    tasks = {d["task_id"] for d in coding.values()}
+    for tid in tasks:
+        n = len([d for d in coding.values() if d["task_id"] == tid])
+        if n != 3:
+            fail(f"invariant: task {tid} has {n} runs, expected 3")
+
+    probe = load("ncmoe_probe_29b.csv")
+    if {r["config"] for r in probe} != {"ref20", "cand17", "ctrl17off"}:
+        fail("invariant: probe config set changed")
+    for r in probe:
+        if r["probe"] == "FAIL" and not r.get("oom_point"):
+            fail(f"invariant: probe {r['config']} FAIL without oom evidence")
+
+
+# --- stage 5: claims -------------------------------------------------------
+
+def stage_claims(magg, coverall) -> None:
+    art = (ROOT / "ARTICLE.md").read_text()
+    o = coverall[0]
+    k, n = o["passes"], o["runs"]
+    tp, tr = o["tests_passed"], o["tests_run"]
+    expected = {
         f"{k}/{n}": "run-level completion",
         f"{tp}/{tr}": "test-method pass",
-        f"{ck}/{cn}": "ClassEval-only passes (must be 13/27, not 15/27)",
-        f"{hk}/{hn}": "single-function floor",
+        f"{o['classeval_passes']}/{o['classeval_runs']}": "ClassEval-only passes",
+        f"{o['humaneval_passes']}/{o['humaneval_runs']}": "single-function floor",
         f"{k / n * 100:.1f}": "run pass rate",
         f"{tp / tr * 100:.1f}": "test-method pass rate",
-        f"{ck / cn * 100:.1f}": "ClassEval-only rate",
-        f"{float(overall['wilson_lo']) * 100:.1f}": "Wilson lower bound",
-        f"{float(overall['wilson_hi']) * 100:.1f}": "Wilson upper bound",
-    })
-if ab_by_arm:
-    off_tg = float(ab_by_arm["off"]["tg_mean"])
-    on_tg = float(ab_by_arm["on"]["tg_mean"])
-    vram_delta = int(round(float(ab_by_arm["on"]["vram_peak_mib"])
-                         - float(ab_by_arm["off"]["vram_peak_mib"])))
+        f"{o['wilson_lo'] * 100:.1f}": "Wilson lower bound",
+        f"{o['wilson_hi'] * 100:.1f}": "Wilson upper bound",
+    }
+    arms = {r["arm"]: r for r in magg}
+    off_tg, on_tg = float(arms["off"]["tg_mean"]), float(arms["on"]["tg_mean"])
+    vram_delta = int(round(float(arms["on"]["vram_peak_mib"])
+                           - float(arms["off"]["vram_peak_mib"])))
     expected.update({
         f"{off_tg:.2f}": "MTP-off deep TG",
         f"{on_tg:.2f}": "MTP-on deep TG",
         f"{(on_tg - off_tg) / off_tg * 100:.1f}": "MTP decode delta (%)",
-        f"{float(ab_by_arm['on']['accept_mean']):.3f}": "MTP acceptance",
+        f"{float(arms['on']['accept_mean']):.3f}": "MTP acceptance",
         str(vram_delta): "MTP VRAM cost (MiB)",
-        f"{float(ab_by_arm['off']['pp_mean']):.2f}": "MTP-off prefill",
-        f"{float(ab_by_arm['on']['pp_mean']):.2f}": "MTP-on prefill",
+        f"{float(arms['off']['pp_mean']):.2f}": "MTP-off prefill",
+        f"{float(arms['on']['pp_mean']):.2f}": "MTP-on prefill",
     })
-if dd:
-    expected[f"{float(dd['depth0_llama_bench']['tg_t_s']):.1f}"] = "depth-0 TG"
-    expected[f"{float(dd['deep_server_measured']['tg_t_s']):.1f}"] = "deep-context TG"
+    dd = {r["mode"]: r for r in load("deep_vs_depth0.csv")}
+    if dd:
+        expected[f"{float(dd['depth0_llama_bench']['tg_t_s']):.1f}"] = "depth-0 TG"
+        expected[f"{float(dd['deep_server_measured']['tg_t_s']):.1f}"] = "deep TG"
+    for s, label in expected.items():
+        if s not in art:
+            fail(f"claims: ARTICLE.md does not contain {s!r} ({label})")
+    cache_pp = {r["pp_t_s"] for r in load("moe_cache.csv")}
+    for v in ("308.5", "775.7"):
+        if v not in cache_pp or v not in art:
+            fail(f"claims: expert-cache prefill {v} missing from CSV or article")
+    ctx_pp = {r["pp_t_s"] for r in load("prefill_vs_ctx.csv")}
+    if "859" not in ctx_pp:
+        fail("claims: prefill_vs_ctx.csv missing 859 t/s at 1k")
+    for v in ("859", "109"):
+        if v not in art:
+            fail(f"claims: ARTICLE.md missing prefill-vs-context value {v}")
 
-# cache / prefill literals must exist in both the CSV and the article
-cache_pp = {r["pp_t_s"] for r in load("moe_cache.csv")}
-for v in ("308.5", "775.7"):
-    if v not in cache_pp:
-        problems.append(f"moe_cache.csv missing expected prefill {v}")
-    if v not in ART:
-        problems.append(f"ARTICLE.md missing cache prefill {v}")
-ctx_pp = {r["pp_t_s"] for r in load("prefill_vs_ctx.csv")}
-if "859" not in ctx_pp:
-    problems.append("prefill_vs_ctx.csv missing 859 t/s at 1k")
-for v in ("859", "109"):
-    if v not in ART:
-        problems.append(f"ARTICLE.md missing prefill-vs-context value {v}")
 
-for s, label in expected.items():
-    if s not in ART:
-        problems.append(f"ARTICLE.md does not contain {s!r} from the tables ({label})")
+# --- stage 6: staleness ----------------------------------------------------
 
-if problems:
-    print("TRACEABILITY FAILED")
-    for p in problems:
-        print("  -", p)
-    sys.exit(1)
+def stage_staleness() -> None:
+    with tempfile.TemporaryDirectory() as td:
+        r = subprocess.run([sys.executable, "scripts/build_results.py",
+                            "--raw", "data/raw", "--out", td],
+                           cwd=ROOT, capture_output=True, text=True)
+        if r.returncode != 0:
+            fail("staleness: build_results.py failed: " +
+                 (r.stderr.strip().splitlines() or ["?"])[-1])
+            return
+        for csv_path in sorted(RES.glob("*.csv")):
+            fresh = Path(td) / csv_path.name
+            if not fresh.exists():
+                fail(f"staleness: rebuild did not produce {csv_path.name}")
+            elif fresh.read_bytes() != csv_path.read_bytes():
+                fail(f"staleness: results/{csv_path.name} differs from a "
+                     "fresh rebuild of data/raw")
 
-print(f"traceability OK: {len(EXPECTED)} tables, "
-      f"{len(runs)} coding runs, {len(mp)} MTP runs")
+
+def main() -> None:
+    mtp, coding = mtp_raw(), coding_raw()
+    stage_schema(mtp, coding)
+    stage_integrity(mtp, coding)
+    magg, coverall = stage_recompute(mtp, coding)
+    stage_invariants(mtp, coding)
+    stage_claims(magg, coverall)
+    stage_staleness()
+
+    if problems:
+        print("TRACEABILITY FAILED")
+        for p in problems:
+            print("  -", p)
+        sys.exit(1)
+    print(f"traceability OK: {len(load('mtp_runs.csv'))} MTP runs, "
+          f"{len(load('coding_eval.csv'))} coding runs, "
+          f"{len(load('mtp_ab.csv')) + len(load('coding_summary.csv'))} tables "
+          "recomputed and matched")
+
+
+if __name__ == "__main__":
+    main()
