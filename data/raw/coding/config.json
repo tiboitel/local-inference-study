@@ -1,0 +1,50 @@
+{
+  "experiment": "coding-eval",
+  "trace_schema": "one JSON per task/run: task_id, run, class_name, source, extract_ok, loop (answer, turn_log), verdict (tests_run, failures, test_classes), wall_s",
+  "model": {
+    "name": "Qwen3.6-29B-REAP-Opus-Reasoning-Distill-MTP",
+    "quantization": "Q4_K_M",
+    "sha256": null,
+    "note": "the model artifact hash was not captured at run time"
+  },
+  "serving_config": "data/raw/mtp/config.json",
+  "sampling": {
+    "temperature": 0.6,
+    "top_p": 0.95,
+    "top_k": 20,
+    "min_p": 0.0,
+    "repeat_penalty": 1.0,
+    "presence_penalty": 0.0
+  },
+  "seed": 42,
+  "runs_per_task": 3,
+  "tasks": [
+    "ClassEval_6",
+    "ClassEval_7",
+    "ClassEval_47",
+    "ClassEval_55",
+    "ClassEval_67",
+    "ClassEval_75",
+    "ClassEval_86",
+    "ClassEval_27",
+    "ClassEval_46",
+    "HumanEval_style_count_vowels",
+    "HumanEval_style_merge_intervals"
+  ],
+  "benchmark": {
+    "name": "ClassEval",
+    "revision": "eaeac44d0d5dcd8a95feec50726d66fedc73a98f",
+    "selected_tasks": 9,
+    "note": "revision taken from the unpublished harness; task sources, prompts and hidden tests are not redistributed"
+  },
+  "sanity_tasks": [
+    "HumanEval_style_count_vowels",
+    "HumanEval_style_merge_intervals"
+  ],
+  "harness": {
+    "name": "qwen-coding-eval/harness",
+    "published": false,
+    "selftest": "11/11 canonical solutions before model runs",
+    "note": "the harness is not part of this repository"
+  }
+}

@@ -71,7 +71,7 @@ def write_csv(path: Path, rows, fields):
 def build_mtp(raw: Path, out: Path):
     run_dir = raw / "mtp"
     runs = []
-    for p in sorted(run_dir.glob("*.json")):
+    for p in sorted(run_dir.glob("*-b*-r*.json")):
         if p.name.startswith("summary-"):
             continue
         arm, block, run = p.stem.split("-")  # off-b1-r1

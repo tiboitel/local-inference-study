@@ -1,0 +1,60 @@
+{
+  "experiment": "mtp-ab-64k",
+  "trace_schema": "one JSON per request: final_text, finish_reason, nonce, timings, peaks, usage, wall_s",
+  "model": {
+    "name": "Qwen3.6-29B-REAP-Opus-Reasoning-Distill-MTP",
+    "quantization": "Q4_K_M",
+    "sha256": null,
+    "note": "the model artifact hash was not captured at run time"
+  },
+  "runtime": {
+    "name": "llama.cpp (turboquant KV-cache fork)",
+    "revision": "bcb85fc3ae85efa0f5f392c6c880dfc524923860"
+  },
+  "effective_flags": [
+    "-c", "65536",
+    "--n-gpu-layers", "99",
+    "--n-cpu-moe", "20",
+    "--spec-type", "draft-mtp",
+    "--spec-draft-n-max", "2",
+    "--cache-type-k", "turbo4",
+    "--cache-type-v", "turbo3",
+    "--threads", "8",
+    "--threads-batch", "8",
+    "-b", "2048",
+    "-ub", "1024",
+    "-np", "1",
+    "--moe-cache", "on",
+    "--reasoning-budget", "1024"
+  ],
+  "flags_source": "HARDWARE-AND-RUNTIME.md; the flags were not captured in the per-run traces",
+  "sampling": {
+    "temperature": 0.6,
+    "top_p": 0.95,
+    "top_k": 20,
+    "min_p": 0.0,
+    "repeat_penalty": 1.0,
+    "presence_penalty": 0.0
+  },
+  "seed": null,
+  "seed_note": "server seed was not recorded; the shipped preset was used",
+  "request": {
+    "stream": true,
+    "cache_prompt": false,
+    "prompt_tokens_mean": 57881,
+    "prompt_sha256": null,
+    "prompt_note": "a fixed ~58k-token body with a per-run nonce; the full request text is not part of the trace"
+  },
+  "design": {
+    "arms": ["off", "on"],
+    "blocks": [1, 2],
+    "order": "off-b1, on-b1, on-b2, off-b2 (from summary finished_at)",
+    "kept_runs_per_arm": 10,
+    "warmups_discarded": true
+  },
+  "harness": {
+    "name": "p4-combined-2026-10/run_config.py",
+    "published": false,
+    "note": "the runner is not part of this repository"
+  }
+}

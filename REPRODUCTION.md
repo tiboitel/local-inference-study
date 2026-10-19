@@ -3,6 +3,9 @@
 The aim is that a reader with similar hardware can rebuild every figure from raw
 traces, and that no figure is a hand-typed number.
 
+From a fresh clone, steps 3, 4 and 6 work using the committed traces. Step 1
+needs the model artifact and step 5 needs the unpublished harness.
+
 ## 1. Serve the model
 
 Use the flags in [HARDWARE-AND-RUNTIME.md](HARDWARE-AND-RUNTIME.md). The critical
@@ -41,6 +44,13 @@ python scripts/build_results.py --raw data/raw --out results
 the *only* place a number in `results/` is produced; hand-editing a CSV breaks
 the traceability chain and will fail `scripts/check_traceability.py`.
 
+Record or verify the provenance of those inputs and outputs:
+
+```bash
+python scripts/manifest.py          # write data/manifest.json + results/manifest.json
+python scripts/manifest.py --check  # fail if a trace or result has drifted
+```
+
 ## 4. Regenerate figures
 
 ```bash
@@ -60,6 +70,7 @@ per-run traces are the auditable artifact. See
 
 ```bash
 python scripts/check_traceability.py   # every figure cell -> a raw trace or a ledger row
+python scripts/manifest.py --check     # inputs/outputs match the committed manifest
 ```
 
 A green run of `check_traceability.py` is the release gate: no untraceable figure

@@ -1,5 +1,6 @@
 {
   "_note": "Hand-transcribed from the dated benchmark clip (2026-10-18, Qwen3.6-28B-REAP20 serving optimization). Each row records the section it came from so a reviewer can check it. This is the only hand-entered data in the repo; everything else is generated from raw run traces. Do not edit a CSV directly.",
+  "_provenance_status": "not self-contained: the dated benchmark clip is not redistributed with this repository; section labels locate the source rows but a reviewer cannot re-check the transcription from the tracked files alone",
   "provenance": "benchmark clip 2026-10-18 (Qwen3.6-28B-REAP20-A3B-Q4_K_M, RTX 3060 12GB, llama.cpp bcb85fc)",
   "ncmoe_sweep_28b": [
     {"ncmoe": 20, "pp_t_s": 308.5, "tg_t_s": 43.0, "vram_mib": 8840, "verdict": "safe, slowest", "section": "04-ncmoe-sweep.md"},
