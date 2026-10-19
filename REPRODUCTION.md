@@ -1,10 +1,19 @@
 # Reproduction
 
-The aim is that a reader with similar hardware can rebuild every figure from raw
-traces, and that no figure is a hand-typed number.
+This repository supports three different activities, and it is worth naming them
+separately:
 
-From a fresh clone, steps 3, 4 and 6 work using the committed traces. Step 1
-needs the model artifact and step 5 needs the unpublished harness.
+- **Audit:** read the committed raw traces and check that every table follows.
+- **Regeneration:** rebuild `results/*.csv` and `figures/*.png` from the
+  committed inputs.
+- **Independent reproduction:** repeat the original experiment from the published
+  procedure. This is **not** possible for the measured runs, because the runner
+  and coding harness are private.
+
+The aim is that a reader with similar hardware can rebuild every figure from raw
+traces, and that no figure is a hand-typed number. From a fresh clone, steps 3,
+4 and 6 work using the committed traces. Step 1 needs the model artifact, step 5
+needs the unpublished harness, and step 7 is a separate procedure-only client.
 
 ## 1. Serve the model
 
@@ -21,6 +30,11 @@ llama-server -m <model>.gguf \
 
 Follow the methodology protocol literally: `stream: true`, `cache_prompt: false`,
 unique nonce per request, interleaved arms, warmups discarded, ≥5 kept runs.
+
+The model artifact SHA-256 and the GPU driver version were not captured at run
+time and are recorded as `null` / post-hoc respectively. They cannot be
+backfilled honestly without retaining the exact artifact and rerunning; see
+[EVIDENCE.md](EVIDENCE.md).
 
 ## 2. Raw traces
 
@@ -69,9 +83,45 @@ per-run traces are the auditable artifact. See
 ## 6. Verify
 
 ```bash
-python scripts/check_traceability.py   # every figure cell -> a raw trace or a ledger row
+python scripts/check_traceability.py --report results/traceability.txt
 python scripts/manifest.py --check     # inputs/outputs match the committed manifest
+python -m pytest -q
+bash scripts/check_hygiene.sh
 ```
 
 A green run of `check_traceability.py` is the release gate: no untraceable figure
-leaves the repo.
+leaves the repo. The report is deterministic and is committed as
+[results/traceability.txt](results/traceability.txt); CI regenerates it and
+fails if it drifts.
+
+## 7. Procedure-only public A/B client
+
+`scripts/reproduce_mtp_ab.py` is a minimal, dependency-free client for the
+central MTP comparison. Start two OpenAI-compatible llama.cpp servers with the
+same model and flags, one with `--spec-type draft-mtp --spec-draft-n-max 2` and
+one without, then:
+
+```bash
+python scripts/reproduce_mtp_ab.py \
+  --off-url http://127.0.0.1:8080/v1 \
+  --on-url  http://127.0.0.1:8081/v1 \
+  --model <served-model-name> --out repro-mtp
+```
+
+It sends a unique nonce, refuses to continue unless the server reports
+`cache_n == 0`, interleaves the arms in `off → on → on → off` order, and writes
+raw JSON plus `runs.csv` and `ab.csv`. It does **not** reproduce the original
+prompt family or the exact published magnitudes. Compare directions and
+uncertainty, and label the output **procedure reproduction**, not result
+reproduction.
+
+## What is not published
+
+| Artifact | Why it is not committed | Public substitute |
+|---|---|---|
+| Benchmark runner | Private orchestration code; contains host-specific paths and operational detail | `scripts/reproduce_mtp_ab.py` (client procedure) + committed raw traces |
+| Coding harness and task prompts | Private harness; redistributing task text/hidden tests may violate the benchmark license | 33 committed per-run traces including verdicts; ClassEval revision citation |
+| Model weights (`.gguf`) | Multi-GB artifact, not redistributable here | Model name and quantization; **no hash** (not captured) |
+| Full long prompt / prompt corpus | Private fixed prompt family | Prompt token counts, per-run nonces, and the public client's synthetic prompt |
+| Server logs (`*.log`) | Host paths and operational noise | Structured `PROBE_*` / `OOM_*` lines in `probe-results.txt` |
+| GPU driver / power at run time | Not recorded | Post-hoc capture, explicitly labelled; see `EVIDENCE.md` |

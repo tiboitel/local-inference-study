@@ -16,6 +16,7 @@ Stages, each independent of scripts/build_results.py:
 """
 from __future__ import annotations
 
+import argparse
 import csv
 import json
 import math
@@ -469,7 +470,40 @@ def stage_staleness() -> None:
                      "fresh rebuild of data/raw")
 
 
+def report_text() -> str:
+    """Deterministic, timestamp-free evidence report for release auditing."""
+    if problems:
+        lines = ["TRACEABILITY FAILED", ""]
+        lines += [f"- {p}" for p in problems]
+        lines += ["", "Reproduction: not claimed (private runner and coding harness)."]
+        return "\n".join(lines) + "\n"
+    tables = sorted(p.name for p in RES.glob("*.csv"))
+    lines = [
+        "TRACEABILITY REPORT",
+        "",
+        "result: OK",
+        "checks: schema, integrity, recompute, invariants, claims, staleness",
+        f"mtp_runs: {len(load('mtp_runs.csv'))}",
+        f"coding_runs: {len(load('coding_eval.csv'))}",
+        f"result_tables: {len(tables)}",
+        "",
+        "tables:",
+    ]
+    lines += [f"- results/{name}" for name in tables]
+    lines += [
+        "",
+        "reproducible: no",
+        "reason: the benchmark runner and coding harness are private; the raw",
+        "traces are committed, and the tables/figures are regenerated from them.",
+    ]
+    return "\n".join(lines) + "\n"
+
+
 def main() -> None:
+    ap = argparse.ArgumentParser()
+    ap.add_argument("--report", help="also write the deterministic release report")
+    args = ap.parse_args()
+
     mtp, coding = mtp_raw(), coding_raw()
     stage_schema(mtp, coding)
     stage_integrity(mtp, coding)
@@ -482,11 +516,22 @@ def main() -> None:
         print("TRACEABILITY FAILED")
         for p in problems:
             print("  -", p)
+        text = report_text()
+        if args.report:
+            path = Path(args.report)
+            path = path if path.is_absolute() else ROOT / path
+            path.write_text(text)
         sys.exit(1)
+
     print(f"traceability OK: {len(load('mtp_runs.csv'))} MTP runs, "
           f"{len(load('coding_eval.csv'))} coding runs, "
           f"{len(load('mtp_ab.csv')) + len(load('coding_summary.csv'))} tables "
           "recomputed and matched")
+    if args.report:
+        path = Path(args.report)
+        path = path if path.is_absolute() else ROOT / path
+        path.write_text(report_text())
+        print("wrote", path.relative_to(ROOT))
 
 
 if __name__ == "__main__":

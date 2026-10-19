@@ -16,11 +16,21 @@ misleading; we use them only as a negative control.
    effect.
 4. **Warmups discarded, ≥5 kept runs per arm.** Warmup runs are thrown away;
    every kept run is reported in the raw trace, including outliers.
-5. **Report the mean and the SEM**, and treat a delta smaller than the noise
-   floor (~4% in this lab) as no result.
+5. **Report the mean and the SEM**, and treat a delta smaller than the
+   operational noise threshold (~4% in this lab) as no result.
 6. **Sample the resource side per request** — peak VRAM, host RAM, GPU
    utilization, watts, and swap — because a throughput win that does not fit in
    VRAM is not a win.
+
+### The noise threshold
+
+The ~4% figure is an **operational heuristic** adopted in this lab, not a
+confidence interval and not a substitute for the per-arm SEM. The control series
+behind it was not retained, so its provenance is **UNVERIFIED**; treat it as a
+guard against over-reading small deltas. The published per-run measurements,
+SEM, and Student-t intervals are computed directly from the kept runs by
+`scripts/build_results.py` and independently re-derived by
+`scripts/check_traceability.py`.
 
 ## Fidelity: match the shipped sampling
 
@@ -59,10 +69,11 @@ model failure inflates every downstream number.
 
 Rejected framings (recorded so they are not repeated):
 
-- **Depth-0 token generation as a headline.** Depth-0 throughput can
-  substantially overestimate decode at long context (in this study's
-  comparison, ~3×); tune against the request path that matches the intended
-  workload.
+- **Depth-0 token generation as a proxy for long-context serving.** Depth-0 is
+  a valid baseline for model-only generation throughput, but it does not capture
+  the full request path. In this study's comparison it overstated deep-context
+  decode by ~3×; benchmark the actual path at representative context lengths
+  when that is the question.
 - **Small-prompt smoke tests as "baseline".** A 25-token request is ~97% fixed
   per-request overhead (~62 ms); its t/s says nothing about prefill.
 - **A single-point measurement.** Every quantitative claim here has ≥5 kept

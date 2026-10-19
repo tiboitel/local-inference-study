@@ -8,6 +8,7 @@ the result builder.
 """
 from __future__ import annotations
 
+import argparse
 import csv
 from pathlib import Path
 
@@ -48,6 +49,76 @@ def fig_mtp():
     fig.suptitle("MTP speculative decoding on/off — live 29B MoE, 64k context")
     fig.tight_layout()
     fig.savefig(FIG / "fig_mtp_ab.png", dpi=150); plt.close(fig)
+
+
+def fig_overview():
+    """Three headline effects in one panel for the top of the article."""
+    fig, ax = plt.subplots(1, 3, figsize=(11, 3.4))
+
+    dd = load("deep_vs_depth0.csv")
+    labels = []
+    for row in dd:
+        mode = row["mode"]
+        if mode == "depth0_llama_bench":
+            labels.append("depth-0")
+        elif row["note"].startswith("same run"):
+            labels.append("deep (first gen)")
+        else:
+            labels.append("deep (steady)")
+    ax[0].bar(labels, [f(r["tg_t_s"]) for r in dd],
+              color=["#c44e52", "#55a868", "#55a868"])
+    ax[0].set_title("Decode: depth-0 vs deep")
+    ax[0].set_ylabel("TG (t/s)")
+    ax[0].tick_params(axis="x", labelrotation=15)
+
+    mc = [r for r in load("moe_cache.csv") if r["ctx"] == "1024"]
+    ax[1].bar([r["config"].replace("ncmoe20_", "") for r in mc],
+              [f(r["pp_t_s"]) for r in mc],
+              color=["#c44e52", "#dd8452", "#55a868"])
+    ax[1].set_title("Prefill: expert cache")
+    ax[1].set_ylabel("PP (t/s)")
+
+    mtp = load("mtp_ab.csv")
+    means = [f(r["tg_mean"]) for r in mtp]
+    sems = [f(r["tg_sem"]) for r in mtp]
+    ax[2].bar([r["arm"] for r in mtp], means, yerr=sems, capsize=4,
+              color=["#c44e52", "#55a868"])
+    ax[2].set_title("Decode: MTP off/on at 64k")
+    ax[2].set_ylabel("TG (t/s)")
+    for a, mean, sem in zip(ax[2].patches, means, sems):
+        ax[2].annotate(f"{mean:.1f}",
+                       (a.get_x() + a.get_width() / 2, mean + sem + 0.5),
+                       ha="center", va="bottom", fontsize=9)
+
+    fig.suptitle("Three measured levers — 29B-class MoE, RTX 3060 12 GB")
+    fig.tight_layout()
+    fig.savefig(FIG / "fig_overview.png", dpi=150); plt.close(fig)
+
+
+def fig_mtp_runs():
+    """Every kept run, so the aggregate is not the only visible evidence."""
+    runs = load("mtp_runs.csv")
+    agg = {r["arm"]: f(r["tg_mean"]) for r in load("mtp_ab.csv")}
+    fig, ax = plt.subplots(figsize=(7.2, 3.8))
+    styles = {"off": ("#c44e52", -0.12), "on": ("#55a868", 0.12)}
+    for arm, (color, offset) in styles.items():
+        for block in (1, 2):
+            pts = sorted((r for r in runs
+                          if r["arm"] == arm and int(r["block"]) == block),
+                         key=lambda r: int(r["run"]))
+            xs = [block + offset + (i - 2) * 0.035
+                  for i in range(len(pts))]
+            ax.scatter(xs, [f(r["tg_t_s"]) for r in pts], s=28, color=color,
+                       label=f"MTP {arm}" if block == 1 else None, zorder=3)
+            ax.hlines(agg[arm], block + offset - 0.16, block + offset + 0.16,
+                      color=color, lw=2)
+    ax.set_xticks([1, 2]); ax.set_xticklabels(["block 1", "block 2"])
+    ax.set_xlabel("interleaved measurement block")
+    ax.set_ylabel("deep decode TG (t/s)")
+    ax.set_title("Every kept MTP run (arms are unpaired: unique nonce per request)")
+    ax.legend(loc="upper left")
+    fig.tight_layout(); fig.savefig(FIG / "fig_mtp_runs.png", dpi=150)
+    plt.close(fig)
 
 
 def fig_prefill_vs_ctx():
@@ -111,10 +182,18 @@ def fig_coding():
 
 
 def main():
-    fig_mtp(); fig_prefill_vs_ctx(); fig_moe_cache()
-    fig_deep_vs_depth0(); fig_coding()
+    global FIG
+    ap = argparse.ArgumentParser()
+    ap.add_argument("--out", default=str(FIG),
+                    help="output directory (default: figures/)")
+    args = ap.parse_args()
+    FIG = Path(args.out)
+    FIG.mkdir(parents=True, exist_ok=True)
+
+    fig_overview(); fig_mtp(); fig_mtp_runs(); fig_prefill_vs_ctx()
+    fig_moe_cache(); fig_deep_vs_depth0(); fig_coding()
     for p in sorted(FIG.glob("*.png")):
-        print("wrote", p.relative_to(ROOT))
+        print("wrote", p)
 
 
 if __name__ == "__main__":

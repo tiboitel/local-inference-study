@@ -47,7 +47,8 @@ def input_files() -> list[Path]:
 
 
 def output_files() -> list[Path]:
-    return sorted(list(RES.glob("*.csv")) + list(FIG.glob("*.png")))
+    return sorted(list(RES.glob("*.csv")) + list(FIG.glob("*.png"))
+                  + list(FIG.glob("*.svg")))
 
 
 def git_state() -> dict:
@@ -74,8 +75,7 @@ def environment() -> dict:
 
 
 def counts() -> dict:
-    mtp = [p for p in (RAW / "mtp").glob("*.json")
-           if not p.name.startswith("summary-")]
+    mtp = [p for p in (RAW / "mtp").glob("*-b*-r*.json")]
     coding = list((RAW / "coding").glob("run-*.json"))
     probes = [line for line in (RAW / "p4" / "probe-results.txt").read_text().splitlines()
               if line.startswith("PROBE_") and "=" in line]

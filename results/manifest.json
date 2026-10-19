@@ -1,18 +1,33 @@
 {
   "git": {
-    "commit": "1eb4839e7d0622876a54f66da30bf6e86c977356",
+    "commit": "39dff465c0491c9770c4802c488460babd0e2ca7",
     "dirty": true,
     "dirty_paths": [
-      "M ARTICLE.md",
+      "M .github/workflows/validate.yml",
+      " M ARTICLE.md",
+      " M CITATION.cff",
+      " M DATA-HYGIENE.md",
+      " M HARDWARE-AND-RUNTIME.md",
       " M LIMITATIONS.md",
       " M METHODOLOGY.md",
       " M README.md",
+      " M REPRODUCTION.md",
+      " M data/raw/README.md",
+      " M data/raw/mtp/config.json",
+      " M data/raw/p4/config.json",
+      " M data/raw/p4/probe-results.txt",
       " M data/traceability.md",
-      " M results/coding_overall.csv",
-      " M scripts/build_results.py",
       " M scripts/check_traceability.py",
-      " M tests/test_recompute.py",
-      " M tests/test_statistics.py"
+      " M scripts/make_figures.py",
+      " M scripts/manifest.py",
+      " M tests/test_artifacts.py",
+      "?? EVIDENCE.md",
+      "?? figures/fig_mtp_runs.png",
+      "?? figures/fig_overview.png",
+      "?? figures/fig_setup.svg",
+      "?? results/traceability.txt",
+      "?? scripts/reproduce_mtp_ab.py",
+      "?? tests/test_docs.py"
     ]
   },
   "outputs": {
@@ -20,7 +35,10 @@
     "figures/fig_deep_vs_depth0.png": "a389e940cc3cb7ecbbc3aec0453295777bcc375a94deafcf5b82843a1c0ead92",
     "figures/fig_moe_cache.png": "9ffcc52ee6f870f60f246fb99d0b76eb1f2286ebe5cdd710459592d21df0df0b",
     "figures/fig_mtp_ab.png": "9d865b368541119d2934bb995dd644566fc26d480795144fe49a9bbc4dd26bef",
+    "figures/fig_mtp_runs.png": "5adff0155e9ba34e920645f6d5b8924c86e89ec9b876148b47f1bc24ce48a2fa",
+    "figures/fig_overview.png": "dfe8a60008f9603ca8908ebc52794f671a54c3f3c59e3977cdcaa1547a89b98e",
     "figures/fig_prefill_vs_ctx.png": "a67d1dd5de5b52cd17eff4833f21ccd4872ff68d792f147ff9ab877b1318eae4",
+    "figures/fig_setup.svg": "00c38ed144ee502bb4c0cf835d62648588e39cc88395517fbeef3db8c5250d76",
     "results/coding_eval.csv": "2ebb1250a0cb05c130021f8a9a329f7feb56d917a2c94eeb2b915046656bbc0c",
     "results/coding_overall.csv": "a4bc5ae248759ad9978ce24a90fecf80e800d068e3c5a8c7269ec7fc9942f7a9",
     "results/coding_summary.csv": "3a9adabbb6d827c8cdd0977218007479e492a73ef8fad73eb7639e4e23c0cd13",
@@ -34,5 +52,5 @@
   },
   "schema": 1,
   "source_manifest": "data/manifest.json",
-  "source_manifest_sha256": "513b06f423c0f0b5d613df9a6615b225d95171830b7ceb8554d1a85e3a3431e0"
+  "source_manifest_sha256": "1ecf2e648f61ebe0966f72d7cfe428b496404abddee87fda401aab553bdfb93d"
 }

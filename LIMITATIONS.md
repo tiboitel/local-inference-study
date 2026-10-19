@@ -10,16 +10,18 @@ family (except the coding suite). Nothing below is a universal law.
   validated results do not describe 128k, other quantizations, or other `ncmoe`
   values. The 128k numbers cited in the article come from the bench sibling and
   are labelled there as not validated on the live profile.
-- **Single model.** The specific 29B REAP distill. The *direction* of the
-  findings (depth matters; MTP helps decode; expert cache helps prefill) should
-  generalize to MoE models on constrained VRAM, but the magnitudes will not.
+- **Single model.** The specific 29B REAP distill. The expectation that the
+  *directions* (depth matters; MTP helps decode; expert cache helps prefill)
+  hold on other MoE models with constrained VRAM is a **hypothesis**, not a
+  finding. The magnitudes will not transfer.
 - **Single build.** `llama.cpp` moves fast. The MTP and KV-quantization behavior
   is revision-specific; a different build can move both the mean and the tail.
 
 ## Statistical limits
 
-- **Small n.** ≥5 kept runs per arm for throughput (±4% noise floor); 3 runs per
-  task for coding. The aggregate Wilson interval treats the 33 runs as
+- **Small n.** ≥5 kept runs per arm for throughput; 3 runs per task for coding.
+  The ~4% threshold is an operational heuristic whose control series was not
+  retained (UNVERIFIED), not a confidence interval. The aggregate Wilson interval treats the 33 runs as
   independent and is therefore too narrow; it is reported as a run-level
   interval alongside a task-clustered bootstrap. Neither is an estimate of
   performance on unseen coding tasks.
@@ -42,6 +44,18 @@ family (except the coding suite). Nothing below is a universal law.
   run is the model's fault rather than the contract's.
 - **Load-probe vs throughput.** The `ncmoe=17` result is an infeasibility proof
   (it OOMs on load), not a throughput comparison of a config that fits.
+
+## Evidence gaps
+
+- **Model artifact hash** and **prompt hash** were not captured at run time and
+  remain `null`; they cannot be backfilled without the exact artifacts and a
+  rerun.
+- **Run-time GPU driver, power state, and background-load controls** were not
+  logged. The driver and power values in `HARDWARE-AND-RUNTIME.md` are post-hoc
+  captures and are labelled as such.
+- **Independent reproduction** is not available: the runner and coding harness
+  are private. The tables are regenerated from committed traces; the public
+  client reproduces the MTP procedure, not the exact experiment.
 
 ## Not tested / not claimed
 

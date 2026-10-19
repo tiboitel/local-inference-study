@@ -2,7 +2,9 @@
 
 Every number published in this repo resolves to a raw result. This table is the
 map, and `scripts/check_traceability.py` enforces it (exit 0 is the release
-gate).
+gate). The deterministic gate output is committed as
+[results/traceability.txt](../results/traceability.txt); evidence labels and
+gaps are in [EVIDENCE.md](../EVIDENCE.md).
 
 | Table | Rows | Raw source | Enforced by |
 |---|---|---|---|

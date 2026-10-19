@@ -21,6 +21,10 @@ argued away at release time.
 - [ ] **No fabricated numbers.** If a number is illustrative, it is labelled as
       such and not presented as measured. Prefer deleting a weak number to
       dressing it up.
+- [ ] **Evidence labels.** Every headline carries one of `MEASURED`,
+      `REGENERATED`, `REPRODUCIBLE`, `ESTIMATED`, or `UNVERIFIED`; see
+      [EVIDENCE.md](EVIDENCE.md). A result rebuilt from raw traces is not the
+      same as an independently reproduced experiment.
 - [ ] **Uncertainty is carried through.** A figure copied from a source with a
       CI or SEM keeps that uncertainty in the table and the prose.
 - [ ] **Licenses.** Third-party datasets (e.g. ClassEval) are referenced by

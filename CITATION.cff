@@ -1,6 +1,7 @@
 cff-version: 1.2.0
 message: "If you use this study, cite it as below."
-title: "Long-Context Local LLM Inference on 12 GB VRAM: What Actually Moves Performance?"
+title: "Long-Context Local LLM Inference on a 12 GB RTX 3060: Measuring MTP, Prefill, and VRAM at 64k"
+version: "0.2.0"
 authors:
   - family-names: "Boitelle"
     given-names: "Timothée"

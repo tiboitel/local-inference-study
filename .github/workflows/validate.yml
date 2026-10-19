@@ -29,11 +29,11 @@ jobs:
       - name: Verify committed input/output hashes
         run: python scripts/manifest.py --check
 
-      # Smoke test: the figures must render from the committed CSVs. Figure
-      # bytes are not compared across platforms; manifest hashes cover the
-      # committed files, and tests/test_artifacts.py checks they are present.
+      # Smoke test: the figures must render from the committed CSVs. Render into
+      # a temporary directory so platform-specific PNG bytes do not disturb the
+      # committed manifest; tests/test_artifacts.py checks the committed files.
       - name: Regenerate figures
-        run: python scripts/make_figures.py
+        run: python scripts/make_figures.py --out "${RUNNER_TEMP}/figures"
 
       - name: Tests
         run: python -m pytest -q
@@ -42,4 +42,14 @@ jobs:
         run: bash scripts/check_hygiene.sh
 
       - name: Traceability gate
-        run: python scripts/check_traceability.py
+        run: python scripts/check_traceability.py --report results/traceability.txt
+
+      - name: Verify committed traceability report
+        run: git diff --exit-code -- results/traceability.txt
+
+      - name: Upload traceability report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: traceability-report
+          path: results/traceability.txt

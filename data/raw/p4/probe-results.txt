@@ -1,4 +1,5 @@
 === probes 2026-10-19T14:11:28Z ===
+BUILD_TURBOQUANT=present: startup log reports "TurboQuant rotation matrices initialized (128x128)"
 --- ref20 ---
 ready; config=ref20 tools=1
 {

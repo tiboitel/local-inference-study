@@ -1,0 +1,23 @@
+TRACEABILITY REPORT
+
+result: OK
+checks: schema, integrity, recompute, invariants, claims, staleness
+mtp_runs: 20
+coding_runs: 33
+result_tables: 10
+
+tables:
+- results/coding_eval.csv
+- results/coding_overall.csv
+- results/coding_summary.csv
+- results/deep_vs_depth0.csv
+- results/moe_cache.csv
+- results/mtp_ab.csv
+- results/mtp_runs.csv
+- results/ncmoe_probe_29b.csv
+- results/ncmoe_sweep_28b.csv
+- results/prefill_vs_ctx.csv
+
+reproducible: no
+reason: the benchmark runner and coding harness are private; the raw
+traces are committed, and the tables/figures are regenerated from them.

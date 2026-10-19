@@ -22,13 +22,18 @@ verdict.
 The traces do **not** embed the model, runtime flags, sampling preset, seed, or
 prompt. Those are recorded per experiment in `mtp/config.json`,
 `coding/config.json`, and `p4/config.json`; fields that were not captured at run
-time are explicitly `null` with a note.
+time are explicitly `null` with a note. In particular, the model artifact hash
+and the prompt hash are `null`: they were not captured and cannot be backfilled
+without rerunning. The evidence labels and remaining gaps are listed in
+[EVIDENCE.md](../EVIDENCE.md).
 
 ## Sanitization and limits
 
 - Absolute host paths and internal hostnames are stripped before commit.
 - Server logs are not committed; the OOM evidence they contained was promoted
-  into `p4/probe-results.txt` as `OOM_<config>=...` lines.
+  into `p4/probe-results.txt` as `OOM_<config>=...` lines. The sanitized
+  `BUILD_TURBOQUANT=` line records the start-up evidence that the tested build
+  initialized TurboQuant rotation matrices.
 - The runner and coding harness are **not published**. The traces can be
   audited, but they cannot be regenerated from this repository alone.
 - Do not hand-edit a trace. Fix the harness, re-run, and re-sanitize instead.

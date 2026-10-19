@@ -1,6 +1,6 @@
 {
   "experiment": "load-probes-29b-mtp-64k",
-  "trace_schema": "probe-results.txt: PROBE_<config>=OK|FAIL and OOM_<config>=<allocator message>",
+  "trace_schema": "probe-results.txt: PROBE_<config>=OK|FAIL, OOM_<config>=<allocator message>, and BUILD_TURBOQUANT=<sanitized startup evidence>",
   "model": {
     "name": "Qwen3.6-29B-REAP-Opus-Reasoning-Distill-MTP",
     "quantization": "Q4_K_M",
@@ -15,7 +15,7 @@
     {"config": "ctrl17off", "ncmoe": 17, "moe_cache": "off", "result": "FAIL",
      "oom": "allocating 208.03 MiB on device 0: cudaMalloc failed: out of memory"}
   ],
-  "evidence": "probe-results.txt (PROBE_* and OOM_* lines)",
+  "evidence": "probe-results.txt (PROBE_*, OOM_*, and sanitized BUILD_* lines)",
   "logs": "server-*.log are not committed",
   "harness": {
     "name": "p4-combined-2026-10/probe_p4.sh",
