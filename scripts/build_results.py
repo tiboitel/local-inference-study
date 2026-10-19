@@ -12,7 +12,10 @@ import argparse
 import csv
 import json
 import math
+import os
+import shutil
 import statistics
+import tempfile
 from pathlib import Path
 
 
@@ -165,8 +168,8 @@ def build_ncmoe_probe(raw: Path, out: Path):
 
 # --- bench-derived tables -------------------------------------------------
 
-def build_bench(raw: Path, out: Path):
-    src = json.loads((raw.parent / "sources-bench.json").read_text())
+def build_bench(sources: Path, out: Path):
+    src = json.loads(sources.read_text())
     write_csv(out / "ncmoe_sweep_28b.csv", src["ncmoe_sweep_28b"],
               ["ncmoe", "pp_t_s", "tg_t_s", "vram_mib", "verdict", "section"])
     write_csv(out / "moe_cache.csv", src["moe_cache"],
@@ -260,18 +263,142 @@ def build_coding(raw: Path, out: Path):
     write_csv(out / "coding_overall.csv", overall, list(overall[0].keys()))
 
 
+def validate_inputs(raw: Path, sources: Path) -> list[str]:
+    """Reject missing, malformed, or incomplete inputs before writing anything."""
+    problems: list[str] = []
+    mtp_dir, coding_dir, p4 = raw / "mtp", raw / "coding", raw / "p4"
+    for label, p in (("mtp dir", mtp_dir), ("coding dir", coding_dir),
+                     ("p4 dir", p4), ("sources", sources)):
+        if not p.exists():
+            problems.append(f"missing {label}: {p}")
+
+    mtp_files = sorted(mtp_dir.glob("*-b*-r*.json")) if mtp_dir.exists() else []
+    if len(mtp_files) != 20:
+        problems.append(f"mtp: expected 20 run traces, found {len(mtp_files)}")
+    seen, per_arm, blocks = set(), {"off": 0, "on": 0}, set()
+    for p in mtp_files:
+        parts = p.stem.split("-")
+        if (len(parts) != 3 or parts[0] not in per_arm
+                or not parts[1].startswith("b") or not parts[2].startswith("r")):
+            problems.append(f"mtp: bad trace filename {p.name}")
+            continue
+        arm, block, run = parts
+        if (arm, block, run) in seen:
+            problems.append(f"mtp: duplicate run {arm}-{block}-{run}")
+        seen.add((arm, block, run))
+        per_arm[arm] += 1
+        blocks.add(block)
+        try:
+            d = json.loads(p.read_text())
+        except (OSError, json.JSONDecodeError) as exc:
+            problems.append(f"mtp: {p.name} is not valid JSON ({exc})")
+            continue
+        t = d.get("timings") or {}
+        for key in ("prompt_n", "prompt_per_second", "predicted_per_second",
+                    "cache_n"):
+            if key not in t:
+                problems.append(f"mtp: {p.name} missing timings.{key}")
+        for key in ("prompt_per_second", "predicted_per_second"):
+            v = t.get(key)
+            if not isinstance(v, (int, float)) or not math.isfinite(v):
+                problems.append(f"mtp: {p.name} timings.{key} is not finite")
+        if t.get("cache_n") != 0:
+            problems.append(f"mtp: {p.name} cache_n={t.get('cache_n')} (not cold)")
+        if d.get("finish_reason") not in ("stop", "length"):
+            problems.append(f"mtp: {p.name} finish_reason={d.get('finish_reason')!r}")
+        peaks = d.get("peaks") or {}
+        for key in ("vram_mib", "ram_used_mib"):
+            v = peaks.get(key)
+            if not isinstance(v, (int, float)) or not math.isfinite(v):
+                problems.append(f"mtp: {p.name} peaks.{key} is not finite")
+    for arm, n in per_arm.items():
+        if n < 5:
+            problems.append(f"mtp: arm {arm} has {n} runs (need >=5)")
+    if blocks and blocks != {"b1", "b2"}:
+        problems.append(f"mtp: blocks {sorted(blocks)} != ['b1', 'b2']")
+
+    coding_files = sorted(coding_dir.glob("run-*.json")) if coding_dir.exists() else []
+    if len(coding_files) != 33:
+        problems.append(f"coding: expected 33 run traces, found {len(coding_files)}")
+    task_runs: dict[str, list] = {}
+    for p in coding_files:
+        try:
+            d = json.loads(p.read_text())
+        except (OSError, json.JSONDecodeError) as exc:
+            problems.append(f"coding: {p.name} is not valid JSON ({exc})")
+            continue
+        for key in ("task_id", "run", "class_name", "source", "wall_s",
+                    "extract_ok", "loop", "verdict"):
+            if key not in d:
+                problems.append(f"coding: {p.name} missing {key}")
+        v = d.get("verdict") or {}
+        for key in ("tests_run", "failures", "passed"):
+            if key not in v:
+                problems.append(f"coding: {p.name} verdict missing {key}")
+        if v.get("tests_run", 0) < v.get("failures", 0):
+            problems.append(f"coding: {p.name} failures > tests_run")
+        if bool(v.get("passed")) != (v.get("failures") == 0):
+            problems.append(f"coding: {p.name} passed/failures inconsistent")
+        if not d.get("extract_ok"):
+            problems.append(f"coding: {p.name} extract_ok is false")
+        task_runs.setdefault(str(d.get("task_id")), []).append(d.get("run"))
+    for tid, runs in task_runs.items():
+        if len(runs) != 3 or len(set(runs)) != 3:
+            problems.append(f"coding: task {tid} has runs {runs} (need 3 distinct)")
+    if len(task_runs) != 11:
+        problems.append(f"coding: expected 11 tasks, found {len(task_runs)}")
+
+    if (p4 / "probe-results.txt").exists():
+        probe = (p4 / "probe-results.txt").read_text()
+        for cfg in ("ref20", "cand17", "ctrl17off"):
+            if f"PROBE_{cfg}=" not in probe:
+                problems.append(f"p4: missing PROBE_{cfg}=")
+        for cfg in ("cand17", "ctrl17off"):
+            if f"OOM_{cfg}=" not in probe:
+                problems.append(f"p4: missing OOM_{cfg}= evidence")
+
+    if sources.exists():
+        try:
+            src = json.loads(sources.read_text())
+        except json.JSONDecodeError as exc:
+            problems.append(f"sources: not valid JSON ({exc})")
+        else:
+            for key in ("ncmoe_sweep_28b", "moe_cache", "prefill_vs_ctx",
+                        "deep_vs_depth0"):
+                if not src.get(key):
+                    problems.append(f"sources: missing {key}")
+    return problems
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--raw", default="data/raw")
+    ap.add_argument("--sources", default="data/sources-bench.json")
     ap.add_argument("--out", default="results")
     args = ap.parse_args()
     raw = Path(args.raw)
+    sources = Path(args.sources)
     out = Path(args.out)
+
+    problems = validate_inputs(raw, sources)
+    if problems:
+        print("INPUT VALIDATION FAILED")
+        for problem in problems:
+            print("  -", problem)
+        raise SystemExit(2)
+
     print("building results from", raw)
-    build_mtp(raw, out)
-    build_ncmoe_probe(raw, out)
-    build_bench(raw, out)
-    build_coding(raw, out)
+    out.mkdir(parents=True, exist_ok=True)
+    staging = Path(tempfile.mkdtemp(dir=out.parent, prefix=".build-"))
+    try:
+        build_mtp(raw, staging)
+        build_ncmoe_probe(raw, staging)
+        build_bench(sources, staging)
+        build_coding(raw, staging)
+        for path in sorted(staging.glob("*.csv")):
+            os.replace(path, out / path.name)
+    finally:
+        shutil.rmtree(staging, ignore_errors=True)
     print("done")
 
 
