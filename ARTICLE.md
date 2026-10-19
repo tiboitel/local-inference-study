@@ -35,7 +35,7 @@ reproducible because the runner and coding harness are private.
   host RAM. *(MEASURED + REGENERATED; live 29B profile.)*
 - **Depth-0 overstates long-context decode in this comparison:** 46.0 t/s at
   depth 0 versus 15.3 t/s behind a full 64k prompt, about 3×. *(MEASURED;
-  imported bench row versus a live request.)*
+  both rows are 28B bench-sibling measurements, not the live 29B profile.)*
 - **The expert cache is a prefill lever, not a decode lever:** 308.5 → 775.7
   t/s at 1k on the 28B bench sibling (~2.5×); deep decode stays ~14–15 t/s.
   *(MEASURED on the sibling; REGENERATED from a non-self-contained ledger.)*

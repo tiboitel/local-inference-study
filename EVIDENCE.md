@@ -28,7 +28,7 @@ A/B comparison; it does not reproduce the exact prompt family or magnitudes.
 |---|---|---|---|
 | MTP decode 14.79 → 38.56 t/s at 64k | MEASURED, REGENERATED | `data/raw/mtp/` | `results/mtp_ab.csv` |
 | MTP per-run distribution and block means | MEASURED, REGENERATED | `data/raw/mtp/` | `results/mtp_runs.csv` |
-| Depth-0 46.0 t/s vs deep 15.3 t/s | MEASURED (imported bench), MEASURED (live request) | `data/sources-bench.json` §06/§07 | `results/deep_vs_depth0.csv` |
+| Depth-0 46.0 t/s vs deep 15.3 t/s | MEASURED (28B bench sibling, two configurations) | `data/sources-bench.json` §06/§07 | `results/deep_vs_depth0.csv` |
 | Expert cache 308.5 → 775.7 t/s at 1k | MEASURED (28B sibling), REGENERATED from a non-self-contained ledger | `data/sources-bench.json` §04 | `results/moe_cache.csv` |
 | 64k prefill with/without cache | MEASURED (28B sibling), partially ESTIMATED (timeout upper bound) | `data/sources-bench.json` §06/§07 | `results/prefill_vs_ctx.csv`, `results/moe_cache.csv` |
 | `ncmoe=17` OOM at 64k | MEASURED | `data/raw/p4/probe-results.txt` | `results/ncmoe_probe_29b.csv` |
