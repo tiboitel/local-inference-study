@@ -91,6 +91,66 @@ if ab:
         if agg and int(agg[0]["n_kept"]) != len(arm_rows):
             problems.append(f"mtp_ab {arm} n_kept != mtp_runs count")
 
+# 5. the numbers written in the article match the result tables (not just that
+#    the cited files exist)
+ART = (ROOT / "ARTICLE.md").read_text()
+overall = (load("coding_overall.csv") or [{}])[0]
+ab_by_arm = {r["arm"]: r for r in ab}
+dd = {r["mode"]: r for r in load("deep_vs_depth0.csv")}
+
+expected: dict[str, str] = {}
+if overall:
+    k, n = int(overall["passes"]), int(overall["runs"])
+    tp, tr = int(overall["tests_passed"]), int(overall["tests_run"])
+    ck, cn = int(overall["classeval_passes"]), int(overall["classeval_runs"])
+    hk, hn = int(overall["humaneval_passes"]), int(overall["humaneval_runs"])
+    expected.update({
+        f"{k}/{n}": "run-level completion",
+        f"{tp}/{tr}": "test-method pass",
+        f"{ck}/{cn}": "ClassEval-only passes (must be 13/27, not 15/27)",
+        f"{hk}/{hn}": "single-function floor",
+        f"{k / n * 100:.1f}": "run pass rate",
+        f"{tp / tr * 100:.1f}": "test-method pass rate",
+        f"{ck / cn * 100:.1f}": "ClassEval-only rate",
+        f"{float(overall['wilson_lo']) * 100:.1f}": "Wilson lower bound",
+        f"{float(overall['wilson_hi']) * 100:.1f}": "Wilson upper bound",
+    })
+if ab_by_arm:
+    off_tg = float(ab_by_arm["off"]["tg_mean"])
+    on_tg = float(ab_by_arm["on"]["tg_mean"])
+    vram_delta = int(round(float(ab_by_arm["on"]["vram_peak_mib"])
+                         - float(ab_by_arm["off"]["vram_peak_mib"])))
+    expected.update({
+        f"{off_tg:.2f}": "MTP-off deep TG",
+        f"{on_tg:.2f}": "MTP-on deep TG",
+        f"{(on_tg - off_tg) / off_tg * 100:.1f}": "MTP decode delta (%)",
+        f"{float(ab_by_arm['on']['accept_mean']):.3f}": "MTP acceptance",
+        str(vram_delta): "MTP VRAM cost (MiB)",
+        f"{float(ab_by_arm['off']['pp_mean']):.2f}": "MTP-off prefill",
+        f"{float(ab_by_arm['on']['pp_mean']):.2f}": "MTP-on prefill",
+    })
+if dd:
+    expected[f"{float(dd['depth0_llama_bench']['tg_t_s']):.1f}"] = "depth-0 TG"
+    expected[f"{float(dd['deep_server_measured']['tg_t_s']):.1f}"] = "deep-context TG"
+
+# cache / prefill literals must exist in both the CSV and the article
+cache_pp = {r["pp_t_s"] for r in load("moe_cache.csv")}
+for v in ("308.5", "775.7"):
+    if v not in cache_pp:
+        problems.append(f"moe_cache.csv missing expected prefill {v}")
+    if v not in ART:
+        problems.append(f"ARTICLE.md missing cache prefill {v}")
+ctx_pp = {r["pp_t_s"] for r in load("prefill_vs_ctx.csv")}
+if "859" not in ctx_pp:
+    problems.append("prefill_vs_ctx.csv missing 859 t/s at 1k")
+for v in ("859", "109"):
+    if v not in ART:
+        problems.append(f"ARTICLE.md missing prefill-vs-context value {v}")
+
+for s, label in expected.items():
+    if s not in ART:
+        problems.append(f"ARTICLE.md does not contain {s!r} from the tables ({label})")
+
 if problems:
     print("TRACEABILITY FAILED")
     for p in problems:
