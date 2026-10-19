@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Build a deterministic release tarball of the public evidence.
 
-    python scripts/package_release.py --version 0.2.0
+    python scripts/package_release.py --version 0.2.1
 
 The archive contains the sanitized raw traces, result tables, figures, manifests,
 the traceability report, and the public scripts needed to rebuild them. It does
@@ -20,6 +20,7 @@ FILES = [
     "ARTICLE.md", "CITATION.cff", "DATA-HYGIENE.md", "EVIDENCE.md",
     "HARDWARE-AND-RUNTIME.md", "LICENSE", "LIMITATIONS.md", "METHODOLOGY.md",
     "PROMPT-PROVENANCE.md", "README.md", "RELEASE-NOTES-v0.2.0.md",
+    "RELEASE-NOTES-v0.2.1.md",
     "REPRODUCTION.md",
     "data/claims.json", "data/figure-sources.json", "data/manifest.json",
     "data/sources-bench.json", "results/manifest.json",

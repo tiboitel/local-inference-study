@@ -138,11 +138,12 @@ python -m pytest -q
 bash scripts/check_hygiene.sh
 ```
 
-Version `v0.2.0` is the frozen evidence release. Build its checksummed artifact
-with `python scripts/package_release.py --version 0.2.0`; it contains the
-sanitized traces, tables, figures, manifests, and public scripts, but not the
-model weights, logs, or private runner. See
-[RELEASE-NOTES-v0.2.0.md](RELEASE-NOTES-v0.2.0.md).
+Version `v0.2.1` is the current evidence release: an editorial revision of
+`v0.2.0` with no data or result changes. Build its checksummed artifact with
+`python scripts/package_release.py --version 0.2.1`; it contains the sanitized
+traces, tables, figures, manifests, and public scripts, but not the model
+weights, logs, or private runner. See
+[RELEASE-NOTES-v0.2.1.md](RELEASE-NOTES-v0.2.1.md).
 
 The traces can be audited from a fresh clone, but the original runner and coding
 harness are **not published**, so the experiment cannot be independently

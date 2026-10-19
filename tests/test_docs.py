@@ -44,14 +44,16 @@ class DocumentationTests(unittest.TestCase):
         for row in rows:
             self.assertTrue(any(label in row for label in LABELS), row)
 
-    def test_evidence_taxonomy_and_gap_statement(self):
+    def test_evidence_taxonomy_lives_in_evidence_doc(self):
         body = text("EVIDENCE.md")
         for label in LABELS:
             self.assertIn(f"**{label}**", body)
         self.assertIn("No run in this study is labelled REPRODUCIBLE", body)
         article = text("ARTICLE.md")
-        self.assertIn("Observed in this configuration", article)
-        self.assertIn("Hypotheses, not findings", article)
+        for label in LABELS:
+            self.assertNotIn(label, article)
+        self.assertIn("Appendix A. Coding evaluation", article)
+        self.assertIn("Appendix B. Data, provenance, and reproduction", article)
 
     def test_public_reproduction_client_help(self):
         result = subprocess.run(

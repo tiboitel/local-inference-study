@@ -22,18 +22,33 @@ regenerated from them, but the original requests cannot be replayed from a fresh
 clone. `scripts/reproduce_mtp_ab.py` publishes the *procedure* for the central
 A/B comparison; it does not reproduce the exact prompt family or magnitudes.
 
-## Label matrix
+## Evidence tiers
 
-| Published result | Labels | Trace / source | Rebuild |
-|---|---|---|---|
-| MTP decode 14.79 → 38.56 t/s at 64k | MEASURED, REGENERATED | `data/raw/mtp/` | `results/mtp_ab.csv`, `results/mtp_comparison.csv` |
-| MTP per-run distribution and block means | MEASURED, REGENERATED | `data/raw/mtp/` | `results/mtp_runs.csv` |
-| Depth-0 46.0 t/s vs deep 15.3 t/s | MEASURED (28B bench sibling, two configurations) | `data/sources-bench.json` §06/§07 | `results/deep_vs_depth0.csv` |
-| Expert cache 308.5 → 775.7 t/s at 1k | MEASURED (28B sibling), REGENERATED from a non-self-contained ledger | `data/sources-bench.json` §04 | `results/moe_cache.csv` |
-| 64k prefill with/without cache | MEASURED (28B sibling), partially ESTIMATED (timeout upper bound) | `data/sources-bench.json` §06/§07 | `results/prefill_vs_ctx.csv`, `results/moe_cache.csv` |
-| `ncmoe=17` OOM at 64k | MEASURED | `data/raw/p4/probe-results.txt` | `results/ncmoe_probe_29b.csv` |
-| Coding 19/33 runs | MEASURED, REGENERATED | `data/raw/coding/` | `results/coding_overall.csv` |
-| 128k on the live 29B MTP profile | ESTIMATED, not validated | 28B bench sibling only | not published as a live result |
+The article uses four structural tiers instead of repeating labels in prose:
+
+| Tier | Meaning |
+|---|---|
+| **Primary** | Measured on the live 29B configuration. |
+| **Supporting** | Measured on the 28B benchmark sibling. Useful for the serving path, but not a measurement of the live model. |
+| **Derived** | Tables and figures regenerated from retained measurements or the committed bench ledger. |
+| **Hypothesis** | A mechanistic or external claim consistent with the measurements but not independently tested here. |
+
+`MEASURED`, `REGENERATED`, `REPRODUCIBLE`, `ESTIMATED` and `UNVERIFIED` remain
+the machine-readable status labels in the ledger below. They are not repeated
+beside every number in `ARTICLE.md`.
+
+## Claim ledger
+
+| Claim | Claim ID | Track | Raw source | Generated result | Status |
+|---|---|---|---|---|---|
+| MTP decode 14.79 → 38.56 t/s | `mtp_tg_off`, `mtp_tg_on`, `mtp_delta`, `mtp_delta_pct` | Primary 29B | `data/raw/mtp/` | `results/mtp_ab.csv`, `results/mtp_comparison.csv` | MEASURED, REGENERATED; not independently reproducible |
+| MTP per-run distribution and block means | `mtp_ci_half`, `mtp_accept` | Primary 29B | `data/raw/mtp/` | `results/mtp_runs.csv`, `results/mtp_blocks.csv` | MEASURED, REGENERATED; not independently reproducible |
+| Depth-0 46.0 t/s vs deep 15.3 t/s | `depth0_tg`, `deep_tg` | Supporting 28B | `data/sources-bench.json` §06/§07 | `results/deep_vs_depth0.csv` | MEASURED; two configurations |
+| Expert cache 308.5 → 775.7 t/s at 1k | `cache_off`, `cache_on` | Supporting 28B | `data/sources-bench.json` §04 | `results/moe_cache.csv` | MEASURED, REGENERATED from a non-self-contained ledger |
+| 64k prefill with/without cache | — | Supporting 28B | `data/sources-bench.json` §06/§07 | `results/prefill_vs_ctx.csv`, `results/moe_cache.csv` | MEASURED, partially ESTIMATED (timeout upper bound) |
+| `ncmoe=17` OOM at 64k | — | Primary 29B | `data/raw/p4/probe-results.txt` | `results/ncmoe_probe_29b.csv` | MEASURED |
+| Coding 19/33 runs | `coding_passes`, `coding_runs` | Primary 29B | `data/raw/coding/` | `results/coding_overall.csv` | MEASURED, REGENERATED; not independently reproducible |
+| 128k on the live 29B MTP profile | — | Supporting 28B only | 28B bench sibling | not published as a live result | ESTIMATED, not validated |
 
 The bench-derived rows are hand-transcribed from a dated source clip and carry a
 section reference in `data/sources-bench.json`. Regenerating their CSV does not
@@ -74,7 +89,7 @@ Status values: **DONE**, **PARTIAL**, **NOT DONE**.
 | 9 | Document the source of the noise floor and handling of exploratory sweeps | **PARTIAL** | The ~4% threshold is documented as an operational heuristic; the control series behind it was not retained. Exploratory sweeps are labelled as hand-transcribed bench rows. |
 | 10 | Run all data-generation and traceability checks from a clean checkout | **DONE (local)** | A clean clone passed the documented build, figure, gate, manifest, test, hygiene, and no-drift checks. `.github/workflows/validate.yml` now has a matching `documented-reproduction` job; it has not yet run on GitHub. |
 | 11 | Record exact commands, expected outputs and environment-specific differences | **PARTIAL** | `REPRODUCTION.md` lists commands; `results/traceability.txt` is the expected gate output. Figure bytes are environment-specific and are not compared across platforms. |
-| 12 | Tag the article, results and raw data as a versioned release | **DONE** | Annotated tag `v0.2.0`; `scripts/package_release.py` writes a deterministic tarball and SHA-256 sidecar. No DOI. |
+| 12 | Tag the article, results and raw data as a versioned release | **DONE** | Annotated tags `v0.2.0` and `v0.2.1`; `scripts/package_release.py` writes a deterministic tarball and SHA-256 sidecar. No DOI. |
 
 ## Known evidence gaps
 
@@ -100,7 +115,7 @@ python scripts/manifest.py --check
 python scripts/make_figures.py
 python -m pytest -q
 bash scripts/check_hygiene.sh
-python scripts/package_release.py --version 0.2.0
+python scripts/package_release.py --version 0.2.1
 ```
 
 The first four commands rebuild every published table and figure; the gate also
