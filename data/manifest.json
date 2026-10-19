@@ -9,35 +9,9 @@
     "python": "3.14.8"
   },
   "git": {
-    "commit": "39dff465c0491c9770c4802c488460babd0e2ca7",
-    "dirty": true,
-    "dirty_paths": [
-      "M .github/workflows/validate.yml",
-      " M ARTICLE.md",
-      " M CITATION.cff",
-      " M DATA-HYGIENE.md",
-      " M HARDWARE-AND-RUNTIME.md",
-      " M LIMITATIONS.md",
-      " M METHODOLOGY.md",
-      " M README.md",
-      " M REPRODUCTION.md",
-      " M data/raw/README.md",
-      " M data/raw/mtp/config.json",
-      " M data/raw/p4/config.json",
-      " M data/raw/p4/probe-results.txt",
-      " M data/traceability.md",
-      " M scripts/check_traceability.py",
-      " M scripts/make_figures.py",
-      " M scripts/manifest.py",
-      " M tests/test_artifacts.py",
-      "?? EVIDENCE.md",
-      "?? figures/fig_mtp_runs.png",
-      "?? figures/fig_overview.png",
-      "?? figures/fig_setup.svg",
-      "?? results/traceability.txt",
-      "?? scripts/reproduce_mtp_ab.py",
-      "?? tests/test_docs.py"
-    ]
+    "commit": "c7337e5e0a1fb1a299037d68d8e0d10f1cfa8c17",
+    "dirty": false,
+    "dirty_paths": []
   },
   "inputs": {
     "data/raw/README.md": "bff778745a9f16ca00b5f3ae4d81871281f7ed43570890f0d19ef1087a358b21",
