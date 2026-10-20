@@ -17,6 +17,11 @@ class MarkdownRenderingTests(unittest.TestCase):
         self.assertEqual(fences % 2, 0, "unbalanced triple-backtick fences")
         self.assertGreaterEqual(fences, 14)
 
+    def test_no_tilde_after_emphasis_opener(self):
+        # GitHub leaves '*~ ...*' literal in this context; avoid the ambiguity.
+        # '**~3x**' (strong) is fine, so only reject a single emphasis opener.
+        self.assertIsNone(re.search(r"(?<!\*)\*~(?!\*)", self.text))
+
     def test_conceptual_blocks_are_fenced_text(self):
         blocks = [
             "Large prompt\n    ↓\nPrefill\n    ↓\nLong-context state\n    ↓\nDecode",
