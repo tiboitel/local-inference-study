@@ -52,8 +52,9 @@ class DocumentationTests(unittest.TestCase):
         article = text("ARTICLE.md")
         for label in LABELS:
             self.assertNotIn(label, article)
-        self.assertIn("Appendix A. Coding evaluation", article)
-        self.assertIn("Appendix B. Data, provenance, and reproduction", article)
+        self.assertIn("# Appendix", article)
+        self.assertIn("## A. Coding evaluation", article)
+        self.assertIn("## B. Data, provenance, and reproduction", article)
 
     def test_public_reproduction_client_help(self):
         result = subprocess.run(

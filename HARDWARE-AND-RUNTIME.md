@@ -21,7 +21,7 @@ see [EVIDENCE.md](EVIDENCE.md).
 
 **VRAM, not host RAM, is the limit.** The KV cache is VRAM-resident, so host RAM
 does not scale with context length; a 128k configuration peaked near 10.7 GiB
-VRAM. The two published 128k figures (10.7 GiB here, ~9.9 GiB in ARTICLE.md §9)
+VRAM. The two published 128k figures (10.7 GiB here, ~9.9 GiB in ARTICLE.md §VII.C)
 have not been reconciled; both are bench-sibling estimates, not live 29B
 measurements.
 

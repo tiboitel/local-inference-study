@@ -6,15 +6,15 @@
 
 This study examines long-context inference for a **29B Mixture-of-Experts** model (*Qwen 29B REAP*) on a single **RTX 3060** with **12 GB** of **VRAM**. In the context of agentic use, the practical question is not how fast the model generates with an empty context, but what happens when a request arrives with tens of thousands of tokens already in the prompt. The experiments therefore measure the serving path: long-context prefill, subsequent decode, memory pressure, and the serving parameters that affect each stage.
 
-In the primary **64k-context** configuration, using approximately **57.9k-token prompts**, multi-token prediction (*MTP*) increased deep-context decode from **14.79** to **38.56 tokens/s** (*+160.7%*), with an estimated difference of **+23.77 tokens/s** (*95% CI: ±4.58 tokens/s; n = 10 per arm*). Prefill was **645.1 tokens/s** vs **637.4 tokens/s** (*-1.19%*) showing no material change in this experiment.  The configuration used an additional **+993 MiB of peak VRAM** and about **+1.7 GiB of peak host RAM**, both are measured increases in per-run peak memory.
+In the primary **64k-context** configuration, using approximately **57.9k-token prompts**, multi-token prediction (*MTP*) increased deep-context decode from **14.79** to **38.56 tokens/s** (*+160.7%*), with an estimated difference of **+23.77 tokens/s** (*95% CI: ±4.58 tokens/s; n = 10 per arm*). Prefill was **645.1 tokens/s** vs **637.4 tokens/s** (*-1.19%*), showing no material change in this experiment. The configuration used an additional **+993 MiB of peak VRAM** and about **+1.7 GiB of peak host RAM**; both are measured increases in per-run peak memory.
 
-Additional experiments on a related **28B MoE** model (*Qwen 28B REAP*) show a different pattern: an MoE expert cache raised short-context prefill from **308.5** to **775.7 tokens/s** while deep decode stayed around **14–15 tokens/s**. A separate depth-0 benchmark reported **46.0 tokens/s** versus **15.3 tokens/s** after a full **64k prompt**. The **46.0 tokens/s** and **15.3 tokens/s** are not directly comparable. The **~3x** is a measured illustration on a related model not a controlled ratio.
+Additional experiments on a related **28B MoE** model (*Qwen 28B REAP*) show a different pattern: an MoE expert cache raised short-context prefill from **308.5** to **775.7 tokens/s** while deep decode stayed around **14–15 tokens/s**. A separate depth-0 benchmark reported **46.0 tokens/s** versus **15.3 tokens/s** after a full **64k prompt**. The **46.0 tokens/s** and **15.3 tokens/s** are not directly comparable; the **~3x** is a measured illustration on a related model, not a controlled ratio.
 
 These measurements characterize **one model**, **one host**, **one runtime**, **one context length** and **one prompt family**.
 
 They are not universal performance estimates.
 
-## 1. Test configuration
+## I. Introduction
 
 The practical question was simple: with 12 GB of VRAM, how much performance can be recovered from a 29B-class MoE model at 64k context, and which serving parameters actually matter? The experiments follow the request path used by a long-context agent: prefill a large history, then generate from it.
 
@@ -58,7 +58,7 @@ Raw traces, table provenance and per-claim status are documented in
 [EVIDENCE.md](EVIDENCE.md). Every table in this article is regenerated from
 committed inputs by the supplied scripts.
 
-## 2. Depth-0 throughput and the long-context gap
+## II. Depth-0 throughput and the long-context gap
 
 `llama-bench` is useful for measuring baseline generation throughput, but its token-generation measurement starts at depth 0: there is no large conversation history in front of the model.
 
@@ -102,7 +102,7 @@ There is a similar issue with very small prompts. A 25-token request in this set
 
 For this reason, the measurements below use the actual server request path wherever possible.
 
-## 3. Measurement protocol
+## III. Measurement protocol
 
 The primary measurements use the server's OpenAI-compatible request path rather than a synthetic token-generation loop.
 
@@ -134,15 +134,15 @@ A small-prompt smoke test and a depth-0 benchmark were not used as substitutes f
 The complete protocol, including the comparison interval, is documented in
 [METHODOLOGY.md](METHODOLOGY.md).
 
-## 4. Expert cache and prefill (28B sibling)
+## IV. Expert cache and prefill
 
-The first optimization target is prefill.
+### A. Optimization of prefill
 
-This section uses the **28B benchmark sibling**, not the live 29B MTP profile.
+The first optimization target is prefill. This section uses the **28B benchmark sibling**, not the live 29B MTP profile.
 
 When expert layers are kept on the CPU, the serving path has to access those experts during processing of the prompt. At long context, repeated expert access can become a substantial part of the prefill cost. The tested runtime provides an expert cache that uses spare VRAM to retain CPU-resident experts.
 
-At 1k context:
+**Example at 1k context:**
 
 | Configuration | Prefill |
 |---|---:|
@@ -161,7 +161,7 @@ The distinction is important:
 
 > **The expert cache is a prefill optimization in this study, not a deep-decode optimization.**
 
-### Context length
+### B. Context length
 
 Prefill also decreases as context grows, even when the configuration still fits in memory.
 
@@ -186,7 +186,7 @@ Second, context length itself becomes increasingly expensive during prefill. The
 
 The practical consequence is that **memory capacity and prefill throughput have to be considered together**.
 
-## 5. MTP at 64k (live 29B)
+## V. MTP at 64k (live 29B)
 
 For deep-context decode, the tested optimization is **multi-token prediction (MTP) speculative decoding**.
 
@@ -201,7 +201,7 @@ to propose multiple tokens before the main model verifies them.
 
 The primary experiment compares MTP off and on using the same live 29B configuration.
 
-### Results
+### A. Results
 
 | Metric | MTP off | MTP on (`n-max=2`) | Difference |
 |---|---:|---:|---:|
@@ -237,7 +237,7 @@ The additional memory cost was approximately:
 
 The MTP-on configuration reached 11,588 MiB of the available 12,288 MiB VRAM, leaving relatively little headroom.
 
-### Uncertainty
+### B. Difference interval
 
 The difference interval is calculated as an **unpaired** interval. Each request has an independent nonce, so the observations are not paired even though the experiment uses interleaved blocks.
 
@@ -258,7 +258,7 @@ The two experimental blocks moved in the same direction:
 
 These block means are descriptive; they are not used as a separate block-level confidence interval.
 
-### What the result means
+### C. What the result means
 
 The strongest conclusion is deliberately narrow:
 
@@ -268,7 +268,9 @@ It does not establish that `n-max=2` is the optimal draft count, that the same p
 
 An earlier single-point observation put MTP-on decode near 30 t/s at approximately 54.6k prompt depth. The controlled A/B is the stronger evidence and supersedes that estimate as the principal measurement.
 
-## 6. KV cache and configuration limits
+## VI. KV cache and configuration limits
+
+### A. KV-cache quantization
 
 The serving build used in this study supports quantized KV-cache types:
 
@@ -291,7 +293,7 @@ It was **not**, however, isolated as an independent throughput experiment. The s
 
 Startup evidence is retained in [data/raw/p4/probe-results.txt](data/raw/p4/probe-results.txt). Claims about the broader performance characteristics of the quantization method are outside the scope of this experiment.
 
-### Memory limits and `ncmoe`
+### B. Memory limits and `ncmoe`
 
 The serving parameters interact. An optimization measured on one configuration cannot automatically be transferred to another.
 
@@ -316,7 +318,7 @@ The result illustrates an important practical property of constrained inference:
 
 Adding MTP changes the memory requirements enough to invalidate a previously measured `ncmoe` setting.
 
-### GPU utilization is not enough to identify the bottleneck
+### C. GPU utilization is not enough to identify the bottleneck
 
 During deep generation, the GPU was observed at approximately:
 
@@ -334,7 +336,7 @@ The practical approach is consequently simple:
 
 Configurations close to the VRAM limit deserve particular caution. A configuration that passes a smoke test with approximately 150 MiB of headroom may still be fragile. The `ncmoe=17` probe demonstrates the more important failure mode: infeasibility can appear during initialization, before throughput can be measured at all.
 
-## 7. Recommended configurations
+## VII. Recommended configurations
 
 The measurements suggest three practical profiles.
 
@@ -344,7 +346,7 @@ The measurements suggest three practical profiles.
 | **Prefill-first** | 64k | Expert cache on | 308.5 → 775.7 t/s at 1k | Supporting 28B |
 | **Maximum context** | 128k | Deeper CPU offload | Prefill below 109 t/s | Supporting 28B; not validated on live 29B |
 
-### Agent default
+### A. Agent default
 
 **64k context · MTP · expert cache on**
 
@@ -365,7 +367,7 @@ This is the best-fitting configuration found for the live 29B profile:
 
 It is most appropriate for workloads that process long context and generate comparatively short responses.
 
-### Prefill-first
+### B. Prefill-first
 
 **Keep the expert cache enabled.**
 
@@ -379,7 +381,7 @@ At 64k, the cache-off sibling configuration timed out with a prefill rate below 
 
 The controlled cache comparison is on the 28B sibling, so this should be treated as supporting evidence rather than a 29B A/B result.
 
-### Maximum context
+### C. Maximum context
 
 **128k requires validation before adoption.**
 
@@ -389,7 +391,7 @@ That may be acceptable for a workload that reads very deep context and generates
 
 The 128k result was **not validated on the live 29B MTP profile**.
 
-## 8. Limitations
+## VIII. Limitations
 
 This is a single-machine engineering study.
 
@@ -399,7 +401,7 @@ The study therefore establishes **configuration-specific measurements**, not gen
 
 The full boundary of the claims is documented in [LIMITATIONS.md](LIMITATIONS.md).
 
-## Conclusion
+## IX. Conclusion
 
 The main result of this study is not that one particular optimization is universally better than another. It is that **long-context local inference has several distinct bottlenecks, and the useful optimization depends on which part of the request path is limiting.**
 
@@ -419,7 +421,9 @@ For long-context inference, that means measuring prefill and decode separately, 
 
 The useful configuration is therefore not the one with the best isolated benchmark number. It is the one that fits, processes realistic context at an acceptable rate, generates fast enough for the workload, and produces useful results.
 
-## Appendix A. Coding evaluation
+# Appendix
+
+## A. Coding evaluation
 
 This is a separate end-to-end utility check, not evidence for the throughput thesis. It uses a fixed 11-task suite and hidden test contracts; its intervals do not project to unseen coding tasks.
 
@@ -467,7 +471,7 @@ The practical conclusion is therefore modest:
 
 The experiment does not establish general coding ability, nor does it establish that higher inference throughput produces higher task success.
 
-## Appendix B. Data, provenance, and reproduction
+## B. Data, provenance, and reproduction
 
 The repository keeps a separate evidence ledger so that the article does not need to carry provenance metadata through every paragraph. The evidence status of each published result, its source artifact, regeneration path, and remaining limitations are documented in [EVIDENCE.md](EVIDENCE.md).
 

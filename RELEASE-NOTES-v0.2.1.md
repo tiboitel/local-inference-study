@@ -9,8 +9,10 @@ The title remains:
 
 ## What changed
 
-- `ARTICLE.md` now opens with an abstract and a direct test-configuration
-  section instead of an audit preamble.
+- `ARTICLE.md` now opens with an abstract and an Introduction that includes the
+  test configuration, instead of an audit preamble.
+- Main sections use Roman numerals (I–IX), with lettered A/B/C subsections for
+  the experimental stages.
 - The 29B primary track and 28B supporting track are separated structurally
   rather than labelled repeatedly in prose.
 - Inline evidence labels were removed from the narrative. The taxonomy,

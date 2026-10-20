@@ -17,6 +17,27 @@ class MarkdownRenderingTests(unittest.TestCase):
         self.assertEqual(fences % 2, 0, "unbalanced triple-backtick fences")
         self.assertGreaterEqual(fences, 14)
 
+    def test_section_structure_is_roman_and_lettered(self):
+        headings = [
+            "## I. Introduction",
+            "## II. Depth-0 throughput and the long-context gap",
+            "## III. Measurement protocol",
+            "## IV. Expert cache and prefill",
+            "## V. MTP at 64k (live 29B)",
+            "## VI. KV cache and configuration limits",
+            "## VII. Recommended configurations",
+            "## VIII. Limitations",
+            "## IX. Conclusion",
+            "# Appendix",
+            "## A. Coding evaluation",
+            "## B. Data, provenance, and reproduction",
+        ]
+        for heading in headings:
+            self.assertIn(heading, self.text)
+        self.assertNotIn("## 1. Test configuration", self.text)
+        self.assertNotIn("Exemple", self.text)
+        self.assertNotIn(").”.", self.text)
+
     def test_no_tilde_after_emphasis_opener(self):
         # GitHub leaves '*~ ...*' literal in this context; avoid the ambiguity.
         # '**~3x**' (strong) is fine, so only reject a single emphasis opener.
