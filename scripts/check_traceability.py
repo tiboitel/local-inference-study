@@ -86,6 +86,22 @@ def sem(xs) -> float | None:
     return statistics.stdev(xs) / math.sqrt(len(xs)) if len(xs) > 1 else None
 
 
+def sd(xs) -> float | None:
+    """Sample standard deviation, recomputed independently of the builder."""
+    xs = [x for x in xs if x is not None]
+    return statistics.stdev(xs) if len(xs) > 1 else None
+
+
+def secs(ms) -> float | None:
+    """Milliseconds from the server timings -> seconds at 3 dp."""
+    v = num(ms)
+    return None if v is None else round(v / 1000.0, 3)
+
+
+def r2(v) -> float | None:
+    return None if v is None else round(v, 2)
+
+
 def wilson(k: int, n: int, z: float = 1.96):
     p = k / n
     denom = 1 + z * z / n
@@ -158,7 +174,8 @@ def coding_raw() -> dict:
 MTP_KEYS = {"final_text", "finish_reason", "nonce", "timings", "peaks",
             "usage", "wall_s"}
 TIMING_KEYS = {"cache_n", "prompt_n", "prompt_per_second",
-               "predicted_per_second"}
+               "predicted_per_second", "predicted_n", "prompt_ms",
+               "predicted_ms"}
 CODING_KEYS = {"task_id", "run", "class_name", "source", "wall_s",
                "extract_ok", "loop", "verdict"}
 
@@ -173,7 +190,8 @@ def stage_schema(mtp, coding) -> None:
         t = d["timings"] or {}
         if not TIMING_KEYS <= set(t):
             fail(f"schema: {name} timings missing {sorted(TIMING_KEYS - set(t))}")
-        for field in ("prompt_per_second", "predicted_per_second", "wall_s"):
+        for field in ("prompt_per_second", "predicted_per_second",
+                      "prompt_ms", "predicted_ms", "predicted_n", "wall_s"):
             v = num(d.get(field, t.get(field)))
             if v is None or not math.isfinite(v):
                 fail(f"schema: {name} {field} is not finite")
@@ -249,6 +267,10 @@ def recompute_mtp(mtp) -> tuple[list, list]:
             "vram_mib": (d.get("peaks") or {}).get("vram_mib"),
             "ram_mib": (d.get("peaks") or {}).get("ram_used_mib"),
             "finish_reason": d.get("finish_reason"),
+            "predicted_n": t.get("predicted_n"),
+            "prompt_s": secs(t.get("prompt_ms")),
+            "decode_s": secs(t.get("predicted_ms")),
+            "wall_s": d.get("wall_s"),
         })
     runs.sort(key=lambda r: (r["arm"], r["block"], r["run"]))
     agg = []
@@ -260,14 +282,21 @@ def recompute_mtp(mtp) -> tuple[list, list]:
             "arm": arm, "n_kept": len(rs),
             "prompt_n_mean": round(mean([r["prompt_n"] for r in rs]), 1),
             "pp_mean": round(mean([r["pp_t_s"] for r in rs]), 2),
+            "pp_sd": r2(sd([r["pp_t_s"] for r in rs])),
             "pp_sem": round(sem([r["pp_t_s"] for r in rs]), 2),
             "tg_mean": round(mean([r["tg_t_s"] for r in rs]), 2),
+            "tg_sd": r2(sd([r["tg_t_s"] for r in rs])),
             "tg_sem": round(tg_sem, 2),
             "tg_ci95": round(t95(len(rs)) * tg_sem, 2) if tg_sem else None,
             "accept_mean": round(mean(accs), 3) if accs else None,
             "accept_sd": round(statistics.stdev(accs), 3) if len(accs) > 1 else None,
             "vram_peak_mib": max(r["vram_mib"] for r in rs),
             "ram_peak_mib": round(max(r["ram_mib"] for r in rs), 0),
+            "predicted_n_mean": round(mean([r["predicted_n"] for r in rs]), 1),
+            "prompt_s_mean": round(mean([r["prompt_s"] for r in rs]), 2),
+            "decode_s_mean": round(mean([r["decode_s"] for r in rs]), 2),
+            "wall_s_mean": round(mean([r["wall_s"] for r in rs]), 2),
+            "wall_s_sd": r2(sd([r["wall_s"] for r in rs])),
         })
     off = [r["tg_t_s"] for r in runs if r["arm"] == "off"]
     on = [r["tg_t_s"] for r in runs if r["arm"] == "on"]
@@ -287,6 +316,7 @@ def recompute_mtp(mtp) -> tuple[list, list]:
             "comparison": "tg", "arm_a": "off", "arm_b": "on",
             "n_a": n1, "n_b": n2,
             "mean_a": round(mean(off), 2), "mean_b": round(mean(on), 2),
+            "sd_a": round(s1, 2), "sd_b": round(s2, 2),
             "difference": round(diff, 2),
             "difference_pct": round(diff / mean(off) * 100, 1),
             "se_diff": round(se, 2), "df": df,
@@ -302,10 +332,13 @@ def recompute_mtp(mtp) -> tuple[list, list]:
              if r["arm"] == "off" and r["block"] == block]
         b = [r["tg_t_s"] for r in runs
              if r["arm"] == "on" and r["block"] == block]
+        sa, sb = sd(a), sd(b)
         blocks.append({
             "block": block, "n_off": len(a), "n_on": len(b),
             "off_mean": round(mean(a), 2) if a else None,
             "on_mean": round(mean(b), 2) if b else None,
+            "off_sd": round(sa, 2) if sa is not None else None,
+            "on_sd": round(sb, 2) if sb is not None else None,
             "difference": round(mean(b) - mean(a), 2) if a and b else None,
         })
     return runs, agg, comparison, blocks

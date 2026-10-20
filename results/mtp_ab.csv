@@ -1,3 +1,3 @@
-arm,n_kept,prompt_n_mean,pp_mean,pp_sem,tg_mean,tg_sem,tg_ci95,accept_mean,accept_sd,vram_peak_mib,ram_peak_mib
-off,10,57881.4,645.1,2.01,14.79,0.38,0.86,,,10595.0,15334.0
-on,10,57880.3,637.39,1.97,38.56,1.99,4.5,0.838,0.07,11588.0,17030.0
+arm,n_kept,prompt_n_mean,pp_mean,pp_sd,pp_sem,tg_mean,tg_sd,tg_sem,tg_ci95,accept_mean,accept_sd,vram_peak_mib,ram_peak_mib,predicted_n_mean,prompt_s_mean,decode_s_mean,wall_s_mean,wall_s_sd
+off,10,57881.4,645.1,6.34,2.01,14.79,1.2,0.38,0.86,,,10595.0,15334.0,104.9,89.73,7.13,97.37,4.13
+on,10,57880.3,637.39,6.21,1.97,38.56,6.28,1.99,4.5,0.838,0.07,11588.0,17030.0,123.2,90.82,3.18,94.47,2.46

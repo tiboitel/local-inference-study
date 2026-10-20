@@ -23,9 +23,16 @@ def make_repo(root: Path) -> Path:
     for arm, base in (("off", 10.0), ("on", 20.0)):
         for block in (1, 2):
             for run in range(1, 6):
+                pp_rate = 600.0 + run
+                tg_rate = base + 0.1 * run
                 timings = {"cache_n": 0, "prompt_n": 1000,
-                           "prompt_per_second": 600.0 + run,
-                           "predicted_per_second": base + 0.1 * run}
+                           "prompt_per_second": pp_rate,
+                           "predicted_per_second": tg_rate,
+                           # request-level timings: ms are converted to s by
+                           # the builder (prompt_s / decode_s)
+                           "prompt_ms": 1000.0 / pp_rate * 1000.0,
+                           "predicted_n": 50,
+                           "predicted_ms": 50.0 / tg_rate * 1000.0}
                 if arm == "on":
                     timings.update({"draft_n": 10, "draft_n_accepted": 8})
                 _write(mtp / f"{arm}-b{block}-r{run}.json", {
@@ -33,7 +40,7 @@ def make_repo(root: Path) -> Path:
                     "nonce": f"{arm}{block}{run}", "timings": timings,
                     "peaks": {"vram_mib": 1000.0 + base,
                               "ram_used_mib": 2000.0},
-                    "usage": {}, "wall_s": 1.0})
+                    "usage": {}, "wall_s": 1.0 + 1000.0 / pp_rate})
             _write(mtp / f"summary-{arm}-b{block}.json", {
                 "arm": arm, "block": block, "kept": 5, "attempts": 5,
                 "failures": [],

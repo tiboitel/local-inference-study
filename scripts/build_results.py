@@ -38,6 +38,21 @@ def sem(xs):
     return statistics.stdev(xs) / math.sqrt(len(xs))
 
 
+def sd(xs):
+    """Sample standard deviation; None below two observations."""
+    xs = [x for x in xs if x is not None]
+    if len(xs) < 2:
+        return None
+    return statistics.stdev(xs)
+
+
+def seconds(ms):
+    """Server timings report milliseconds; publish seconds (3 dp)."""
+    if not isinstance(ms, (int, float)):
+        return None
+    return round(ms / 1000.0, 3)
+
+
 # two-sided 95% Student-t critical values by degrees of freedom (n - 1)
 _T95 = {1: 12.706, 2: 4.303, 3: 3.182, 4: 2.776, 5: 2.571, 6: 2.447,
         7: 2.365, 8: 2.306, 9: 2.262, 10: 2.228, 11: 2.201, 12: 2.179,
@@ -120,24 +135,34 @@ def build_mtp(raw: Path, out: Path):
             "vram_mib": (d.get("peaks") or {}).get("vram_mib"),
             "ram_mib": (d.get("peaks") or {}).get("ram_used_mib"),
             "finish_reason": d.get("finish_reason"),
+            # request-level timing fields: one row is one HTTP request
+            "predicted_n": t.get("predicted_n"),
+            "prompt_s": seconds(t.get("prompt_ms")),
+            "decode_s": seconds(t.get("predicted_ms")),
+            "wall_s": d.get("wall_s"),
         })
     runs.sort(key=lambda r: (r["arm"], r["block"], r["run"]))
 
     write_csv(out / "mtp_runs.csv", runs,
               ["arm", "block", "run", "prompt_n", "pp_t_s", "tg_t_s", "accept",
-               "cache_n", "vram_mib", "ram_mib", "finish_reason"])
+               "cache_n", "vram_mib", "ram_mib", "finish_reason",
+               "predicted_n", "prompt_s", "decode_s", "wall_s"])
 
     agg = []
     for arm in ("off", "on"):
         rs = [r for r in runs if r["arm"] == arm]
         tg_sem = sem([r["tg_t_s"] for r in rs])
+        pp_sd, tg_sd, wall_sd = (sd([r[k] for r in rs])
+                                 for k in ("pp_t_s", "tg_t_s", "wall_s"))
         agg.append({
             "arm": arm,
             "n_kept": len(rs),
             "prompt_n_mean": round(mean([r["prompt_n"] for r in rs]), 1),
             "pp_mean": round(mean([r["pp_t_s"] for r in rs]), 2),
+            "pp_sd": round(pp_sd, 2) if pp_sd is not None else None,
             "pp_sem": round(sem([r["pp_t_s"] for r in rs]), 2),
             "tg_mean": round(mean([r["tg_t_s"] for r in rs]), 2),
+            "tg_sd": round(tg_sd, 2) if tg_sd is not None else None,
             "tg_sem": round(tg_sem, 2),
             "tg_ci95": round(t95(len(rs)) * tg_sem, 2) if tg_sem else None,
             "accept_mean": (lambda m: round(m, 3) if m is not None else None)(
@@ -146,11 +171,19 @@ def build_mtp(raw: Path, out: Path):
                           if len([r for r in rs if r["accept"] is not None]) > 1 else None),
             "vram_peak_mib": max(r["vram_mib"] for r in rs),
             "ram_peak_mib": round(max(r["ram_mib"] for r in rs), 0),
+            # how the request time is spent: prefill, decode, total wall time
+            "predicted_n_mean": round(mean([r["predicted_n"] for r in rs]), 1),
+            "prompt_s_mean": round(mean([r["prompt_s"] for r in rs]), 2),
+            "decode_s_mean": round(mean([r["decode_s"] for r in rs]), 2),
+            "wall_s_mean": round(mean([r["wall_s"] for r in rs]), 2),
+            "wall_s_sd": round(wall_sd, 2) if wall_sd is not None else None,
         })
     write_csv(out / "mtp_ab.csv", agg,
-              ["arm", "n_kept", "prompt_n_mean", "pp_mean", "pp_sem", "tg_mean",
-               "tg_sem", "tg_ci95", "accept_mean", "accept_sd", "vram_peak_mib",
-               "ram_peak_mib"])
+              ["arm", "n_kept", "prompt_n_mean", "pp_mean", "pp_sd", "pp_sem",
+               "tg_mean", "tg_sd", "tg_sem", "tg_ci95", "accept_mean",
+               "accept_sd", "vram_peak_mib", "ram_peak_mib",
+               "predicted_n_mean", "prompt_s_mean", "decode_s_mean",
+               "wall_s_mean", "wall_s_sd"])
 
     off = [r["tg_t_s"] for r in runs if r["arm"] == "off"]
     on = [r["tg_t_s"] for r in runs if r["arm"] == "on"]
@@ -170,6 +203,7 @@ def build_mtp(raw: Path, out: Path):
             "comparison": "tg", "arm_a": "off", "arm_b": "on",
             "n_a": n1, "n_b": n2,
             "mean_a": round(mean(off), 2), "mean_b": round(mean(on), 2),
+            "sd_a": round(s1, 2), "sd_b": round(s2, 2),
             "difference": round(diff, 2),
             "difference_pct": round(diff / mean(off) * 100, 1),
             "se_diff": round(se, 2), "df": df,
@@ -181,9 +215,9 @@ def build_mtp(raw: Path, out: Path):
         })
     write_csv(out / "mtp_comparison.csv", comparison,
               ["comparison", "arm_a", "arm_b", "n_a", "n_b", "mean_a",
-               "mean_b", "difference", "difference_pct", "se_diff", "df",
-               "df_welch", "tcrit", "ci95_halfwidth", "ci95_lo", "ci95_hi",
-               "method"])
+               "mean_b", "sd_a", "sd_b", "difference", "difference_pct",
+               "se_diff", "df", "df_welch", "tcrit", "ci95_halfwidth",
+               "ci95_lo", "ci95_hi", "method"])
 
     blocks = []
     for block in (1, 2):
@@ -191,14 +225,18 @@ def build_mtp(raw: Path, out: Path):
              if r["arm"] == "off" and r["block"] == block]
         b = [r["tg_t_s"] for r in runs
              if r["arm"] == "on" and r["block"] == block]
+        sa, sb = sd(a), sd(b)
         blocks.append({
             "block": block, "n_off": len(a), "n_on": len(b),
             "off_mean": round(mean(a), 2) if a else None,
             "on_mean": round(mean(b), 2) if b else None,
+            "off_sd": round(sa, 2) if sa is not None else None,
+            "on_sd": round(sb, 2) if sb is not None else None,
             "difference": round(mean(b) - mean(a), 2) if a and b else None,
         })
     write_csv(out / "mtp_blocks.csv", blocks,
-              ["block", "n_off", "n_on", "off_mean", "on_mean", "difference"])
+              ["block", "n_off", "n_on", "off_mean", "on_mean", "off_sd",
+               "on_sd", "difference"])
 
 
 # --- 29B ncmoe load probe -------------------------------------------------
@@ -383,13 +421,17 @@ def validate_inputs(raw: Path, sources: Path) -> list[str]:
             continue
         t = d.get("timings") or {}
         for key in ("prompt_n", "prompt_per_second", "predicted_per_second",
-                    "cache_n"):
+                    "cache_n", "predicted_n", "prompt_ms", "predicted_ms"):
             if key not in t:
                 problems.append(f"mtp: {p.name} missing timings.{key}")
-        for key in ("prompt_per_second", "predicted_per_second"):
+        for key in ("prompt_per_second", "predicted_per_second",
+                    "prompt_ms", "predicted_ms", "predicted_n"):
             v = t.get(key)
             if not isinstance(v, (int, float)) or not math.isfinite(v):
                 problems.append(f"mtp: {p.name} timings.{key} is not finite")
+        wall = d.get("wall_s")
+        if not isinstance(wall, (int, float)) or not math.isfinite(wall):
+            problems.append(f"mtp: {p.name} wall_s is missing or not finite")
         if isinstance(t.get("prompt_n"), int):
             prompts.setdefault((arm, int(block[1:])), []).append(t["prompt_n"])
         if t.get("cache_n") != 0:

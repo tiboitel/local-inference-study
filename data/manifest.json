@@ -9,12 +9,27 @@
     "python": "3.14.8"
   },
   "git": {
-    "commit": "dd5604d698e18056897262850bedb8655cc12f05",
-    "dirty": false,
-    "dirty_paths": []
+    "commit": "4370dcc59cd0f2b3bfd85e3435c02f929ca49c65",
+    "dirty": true,
+    "dirty_paths": [
+      "M ARTICLE.md",
+      " M EVIDENCE.md",
+      " M LIMITATIONS.md",
+      " M METHODOLOGY.md",
+      " M README.md",
+      " M REPRODUCTION.md",
+      " M data/claims.json",
+      " M results/mtp_ab.csv",
+      " M results/mtp_blocks.csv",
+      " M results/mtp_comparison.csv",
+      " M results/mtp_runs.csv",
+      " M scripts/build_results.py",
+      " M scripts/check_traceability.py",
+      " M tests/fixture.py"
+    ]
   },
   "inputs": {
-    "data/claims.json": "5d48a43d921f6a7882f16d6889d5f9dc3a48c9af96c5bdeb01f50737d4ed1703",
+    "data/claims.json": "0d4a9d417d93647b5758d6ca61222a7ebfb9e78e457567b16728cd38f11d69f7",
     "data/figure-sources.json": "be5b7bc8163957734cddd11c2fd63cc840d64115c0196fd3919c79978eaca500",
     "data/raw/README.md": "0e7737360a042e79c65875eb8481bc3e3fe967ec270fb3c4724f5bf840485ce8",
     "data/raw/coding/config.json": "52f7f194f90ef8b123d785227c5fbb250f9b53d2eddd111903c67f1ec43088a5",
@@ -96,10 +111,10 @@
     "results/coding_summary.csv": "3a9adabbb6d827c8cdd0977218007479e492a73ef8fad73eb7639e4e23c0cd13",
     "results/deep_vs_depth0.csv": "4aec7434dce94322f8d3bb7a99813b715fef349597ed37f60e28985239df9d0e",
     "results/moe_cache.csv": "6482daa6385a6678d0b3d0975acb5f650e15ff4dca373ee14a022605925e66b0",
-    "results/mtp_ab.csv": "d37c82e435cd1f601b6053673cd47a0199033e955cd68f1da4c38fe5a805ff2b",
-    "results/mtp_blocks.csv": "0d588d017aa3c901f45c947eb3961d1b8a574f04dc84c46e148218517fd1e838",
-    "results/mtp_comparison.csv": "2f62fa3cd02eca977b8fbee2683e853da3cf851f8afdb76fc427981e34d3482a",
-    "results/mtp_runs.csv": "6e7c93724c1d3ea27636022fa39ad235714dd8501f5791c7c48b67d65c95876d",
+    "results/mtp_ab.csv": "0e5300cf75c0a3cf6aa200bd556b2fe2f0605a8837363075542808c87fa84a38",
+    "results/mtp_blocks.csv": "48a75b057a55724960acf3a6531636c7937543225df92ba6ec5f2745ac4f9bd8",
+    "results/mtp_comparison.csv": "f5d29b64ee8ae98bd64e105763b0480f3f0a2ab3c91ac6feb5b3aba9dd18a551",
+    "results/mtp_runs.csv": "704cafde6319742f99996276eaba0fbb8d4a7d8842ebcea733d4b08da29d13f4",
     "results/ncmoe_probe_29b.csv": "f7223e868cbb14cf8c0d78702a9c8487049f5d2a918430dd793bc3abe74a9ea3",
     "results/ncmoe_sweep_28b.csv": "dc7677e90bfe7343f06500086b456c2668c08dc482dc9d2b6e986f84b2080761",
     "results/prefill_vs_ctx.csv": "b8ad20a8030869ea257aa44b586112f51f69e9a55f5e38d284868404ad75e2c9"
