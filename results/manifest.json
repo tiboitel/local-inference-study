@@ -1,12 +1,12 @@
 {
   "git": {
-    "commit": "797108d35b652aecb97454d8a97d0da3289d24f9",
+    "commit": "dd5604d698e18056897262850bedb8655cc12f05",
     "dirty": false,
     "dirty_paths": []
   },
   "outputs": {
     "figures/fig_coding_passrate.png": "2ef615971911c93d6d1e534012b926920f71911b468f671000d6998aea6071f5",
-    "figures/fig_deep_vs_depth0.png": "a389e940cc3cb7ecbbc3aec0453295777bcc375a94deafcf5b82843a1c0ead92",
+    "figures/fig_deep_vs_depth0.png": "8b39bb1cc0dbd467de717618333f5c838097b53d3e8f6ad719c8b6d670f32435",
     "figures/fig_moe_cache.png": "9ffcc52ee6f870f60f246fb99d0b76eb1f2286ebe5cdd710459592d21df0df0b",
     "figures/fig_mtp_ab.png": "9d865b368541119d2934bb995dd644566fc26d480795144fe49a9bbc4dd26bef",
     "figures/fig_mtp_runs.png": "5adff0155e9ba34e920645f6d5b8924c86e89ec9b876148b47f1bc24ce48a2fa",
@@ -28,5 +28,5 @@
   },
   "schema": 1,
   "source_manifest": "data/manifest.json",
-  "source_manifest_sha256": "7b1a4dab154726c3916a22ced8a488a049895f798ba9624b588d8aaa43075819"
+  "source_manifest_sha256": "8949a9da14b38dfb86fabdec7631de2d035dc7d56b0f6161deca06b7918c803f"
 }
