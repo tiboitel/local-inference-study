@@ -46,10 +46,33 @@ CI95    = diff +/- t(df=min(n_off, n_on)-1) * SE_diff
 ```
 
 The conservative multiplier `t(9)=2.262` is used even though the
-Welch–Satterthwaite degrees of freedom are about 9.66. Both are reported in
-[`results/mtp_comparison.csv`](results/mtp_comparison.csv); block-level means are
-in [`results/mtp_blocks.csv`](results/mtp_blocks.csv). The gate recomputes both
-tables from the raw traces.
+Welch–Satterthwaite degrees of freedom are about 9.66. The difference in means
+is +23.77 t/s, with a 95% interval of [19.19, 28.34] t/s (reported
+elsewhere as ±4.58 t/s). The interval is in
+[`results/mtp_comparison.csv`](results/mtp_comparison.csv); block-level means
+are in [`results/mtp_blocks.csv`](results/mtp_blocks.csv). The gate recomputes
+both tables from the raw traces.
+
+All interval fields are rounded independently from the unrounded calculation,
+so the displayed endpoints can appear asymmetric by 0.01 t/s around the
+displayed estimate (`[19.19, 28.34]` around `23.77`). The conservative
+multiplier yields a slightly wider interval than the Welch-df multiplier, by
+design. The interval covers run-to-run variation under the documented design;
+it does not cover uncertainty from undocumented per-run configuration.
+
+### Configuration capture and run retention
+
+The MTP arms used identical shared serving settings and differed in their
+speculative-decoding configuration: the off arm used `--spec-type none`, the on
+arm used `--spec-type draft-mtp --spec-draft-n-max 2`. All other flags,
+including `--moe-cache on`, `--n-cpu-moe 20`, and the KV-cache types, were
+shared. Flags were not recorded in the per-run traces; the matching comes from
+the run record.
+
+Two warmups were discarded per server start. One initial on-block was discarded
+because a stale server held its port and was rerun after cleanup; no retained
+run was excluded for its result. The retained set includes the slowest on-arm
+run (21.4 t/s).
 
 ## Fidelity: match the shipped sampling
 

@@ -64,3 +64,18 @@ measurements.
 the GPU. That number is the whole memory game: see
 [results/ncmoe_sweep_28b.csv](results/ncmoe_sweep_28b.csv) and
 [results/moe_cache.csv](results/moe_cache.csv).
+
+## MTP A/B arm configuration
+
+The primary MTP comparison used identical shared serving settings. The
+documented difference was the speculative-decoding configuration:
+
+| Arm | Speculative decoding |
+|---|---|
+| MTP off | `--spec-type none` |
+| MTP on | `--spec-type draft-mtp --spec-draft-n-max 2` |
+
+All other flags were shared, including `--moe-cache on`, `--n-cpu-moe 20`, the
+`turbo4`/`turbo3` KV types, context, and batch settings. The per-run traces do
+not record flags; this matching comes from the run record, not from trace
+metadata.

@@ -6,7 +6,7 @@
 
 This study examines long-context inference for a **29B Mixture-of-Experts** model (*Qwen 29B REAP*) on a single **RTX 3060** with **12 GB** of **VRAM**. In the context of agentic use, the practical question is not how fast the model generates with an empty context, but what happens when a request arrives with tens of thousands of tokens already in the prompt. The experiments therefore measure the serving path: long-context prefill, subsequent decode, memory pressure, and the serving parameters that affect each stage.
 
-In the primary **64k-context** configuration, using approximately **57.9k-token prompts**, multi-token prediction (*MTP*) increased deep-context decode from **14.79** to **38.56 tokens/s** (*+160.7%*), with an estimated difference of **+23.77 tokens/s** (*95% CI: ±4.58 tokens/s; n = 10 per arm*). Prefill was **645.1 tokens/s** vs **637.4 tokens/s** (*-1.19%*), showing no material change in this experiment. The configuration used an additional **+993 MiB of peak VRAM** and about **+1.7 GiB of peak host RAM**; both are measured increases in per-run peak memory.
+In the primary **64k-context** configuration, using approximately **57.9k-token prompts**, the MTP-on arm raised measured deep-context decode from **14.79** to **38.56 tokens/s** (*+160.7%*) under the documented shared serving configuration, with an estimated difference of **+23.77 tokens/s** (*unpaired 95% CI: [19.19, 28.34] tokens/s; n = 10 per arm*). The arms used identical shared serving settings; their speculative-decoding configuration differed (`--spec-type none` vs `--spec-type draft-mtp --spec-draft-n-max 2`). Prefill was **645.1 tokens/s** vs **637.4 tokens/s** (*-1.19%*), below the study's approximately **4%** operational threshold, which does not establish statistical equivalence. The MTP arm used an additional **+993 MiB of peak VRAM** and about **+1.7 GiB of peak host RAM**; both are measured increases in per-run peak memory.
 
 Additional experiments on a related **28B MoE** model (*Qwen 28B REAP*) show a different pattern: an MoE expert cache raised short-context prefill from **308.5** to **775.7 tokens/s** while deep decode stayed around **14–15 tokens/s**. A separate depth-0 benchmark reported **46.0 tokens/s** versus **15.3 tokens/s** after a full **64k prompt**. The **46.0 tokens/s** and **15.3 tokens/s** are not directly comparable; the **~3x** is a measured illustration on a related model, not a controlled ratio.
 
@@ -16,47 +16,56 @@ They are not universal performance estimates.
 
 ## I. Introduction
 
-The practical question was simple: with 12 GB of VRAM, how much performance can be recovered from a 29B-class MoE model at 64k context, and which serving parameters actually matter? The experiments follow the request path used by a long-context agent: prefill a large history, then generate from it.
+Serving a 29B-class Mixture-of-Experts (MoE) model at a 64k context length on a 12 GB GPU creates a coupled memory and throughput problem. The KV cache grows with sequence length, while the model's expert weights compete for the same limited GPU memory as the cache and other runtime allocations. CPU expert offloading can make the configuration fit, but it introduces additional execution and data-transfer costs. Speculative decoding may improve generation throughput, although its benefit and memory overhead depend on the workload and serving configuration. The central question is which bottlenecks dominate the request path and which optimizations improve performance within the available memory budget.
 
-The study has two tracks, and their results are never pooled:
+This study measures that path for a long-context agent request: prefill an approximately 57.9k-token history, then decode from it. *Performance* here means prefill throughput, decode throughput, and the peak VRAM and host RAM required to sustain them. Task quality is checked separately by a small end-to-end coding suite; it is not inferred from throughput.
+
+The experiments address four questions:
+
+1. How does decode throughput measured without conversation history (*depth-0*) compare with throughput after processing a long prompt?
+2. How does enabling the expert cache affect prefill and decode throughput under the tested configurations?
+3. What throughput and memory differences are observed between the multi-token prediction (MTP) on and off arms at deep context under the documented shared serving configuration?
+4. Which results obtained with the supporting benchmark model transfer to the primary served checkpoint?
+
+The study has two tracks, reported separately and never combined into a single estimate:
 
 | Track | Model | Experiments |
 |---|---|---|
-| **Primary** | Live `Qwen3.6-29B-REAP-Opus-Reasoning-Distill-MTP`, Q4_K_M | MTP on/off A/B, `ncmoe` load probes, coding evaluation |
-| **Supporting** | 28B benchmark sibling | Depth-0 baseline, expert-cache comparison, context sweep |
+| **Primary** | `Qwen3.6-29B-REAP-Opus-Reasoning-Distill-MTP`, Q4_K_M | MTP on/off A/B, `ncmoe` load probes, coding evaluation |
+| **Supporting** | 28B benchmark related model | Depth-0 baseline, expert-cache comparison, context sweep |
 
-Each section states which track it uses. The primary configuration is:
+The primary model is a sparse MoE with approximately 29B total parameters, of which a subset is active per token, quantized to Q4_K_M. The supporting track uses a 28B benchmark related model (*Qwen 28B REAP, Q4_K_M*) for comparison points that the live configuration does not cover: a depth-0 baseline, a recorded cache on/off comparison, and a context sweep. It is not a measurement of the live model.
+
+Each section states which track it uses. The primary configuration is summarized below; the full host specification, OS, driver, power limit, and serving flags are documented in [HARDWARE-AND-RUNTIME.md](HARDWARE-AND-RUNTIME.md).
 
 | Component | Configuration |
 |---|---|
 | GPU | NVIDIA RTX 3060, 12 GB (12,288 MiB) |
-| CPU | Intel i7-9700K, 8 cores / 8 threads |
-| RAM | 32 GB |
-| OS | Arch Linux |
-| GPU driver | 615.78.08 |
-| GPU power limit | 170 W |
-| Model | `Qwen3.6-29B-REAP-Opus-Reasoning-Distill-MTP`, Q4_K_M |
-| Architecture | Sparse Mixture-of-Experts, ~29B total parameters |
-| Context | 65,536 tokens |
-| Prompt length | ~57.9k tokens in the MTP A/B |
-| Expert offload | `--n-cpu-moe 20` |
-| MTP experiment | off vs `--spec-type draft-mtp --spec-draft-n-max 2` |
-| KV cache | `turbo4` (K) / `turbo3` (V) |
-| Expert cache | `--moe-cache on` for the MTP-on profile |
-| Runtime | `llama.cpp` KV-cache fork |
-| Runtime revision | `bcb85fc3ae85efa0f5f392c6c880dfc524923860` |
+| Host | Intel i7-9700K, 8 cores / 8 threads; 32 GB RAM |
+| Model | `Qwen3.6-29B-REAP-Opus-Reasoning-Distill-MTP`, Q4_K_M; sparse MoE, ~29B total parameters |
+| Context limit / prompt length | 65,536 tokens; ~57.9k-token prompts in the MTP A/B |
+| Expert offload | `--n-cpu-moe 20` (experts for 20 layers on CPU) |
+| MTP arms | `--spec-type none` vs `--spec-type draft-mtp --spec-draft-n-max 2`; all other serving settings shared |
+| KV cache | `turbo4` (K) / `turbo3` (V), quantized |
+| Expert cache | `--moe-cache on` in both arms |
+| Runtime | `llama.cpp` KV-cache fork, revision `bcb85fc` (full hash in the linked document) |
 
-The full host configuration and serving flags are documented in
-[HARDWARE-AND-RUNTIME.md](HARDWARE-AND-RUNTIME.md).
+`64k` denotes the 65,536-token context limit. `--n-cpu-moe 20` keeps the experts of 20 transformer layers on the CPU. `turbo4` (K) and `turbo3` (V) are the serving build's quantized KV-cache types. MTP uses the model's draft head to propose tokens that the main model verifies.
+
+In the primary 64k experiment, the MTP-on arm reached **38.56 t/s** deep-context decode against **14.79 t/s** for MTP off (**+160.7%**) under the documented shared serving configuration. The estimated difference was **+23.77 t/s** (*unpaired 95% CI [19.19, 28.34] t/s; 10 retained runs per arm*). The documented arms used identical shared serving settings and differed in their speculative-decoding configuration; per-run flags were not captured in the traces, so this matching is documented rather than trace-verifiable. Prefill was **637.4 vs 645.1 t/s** (**−1.19%**), below the study's approximately 4% operational threshold. That threshold is used to avoid over-interpreting small differences; it does not establish statistical equivalence. The MTP arm used **+993 MiB of peak VRAM** (*11,588 of 12,288 MiB*) and approximately **+1.7 GiB of host RAM**.
+
+On the supporting 28B track, enabling the expert cache at 1k context with `ncmoe=20` raised prefill from **308.5 to 775.7 t/s** (*about 2.5×; the `soft` mode reached 313.2 t/s*), while deep decode stayed around **14–15 t/s** across the tested cache and `ncmoe` configurations. A depth-0 benchmark measured **46.0 t/s**, against **15.3 t/s** after a full 64k prompt. Those two rows come from different sibling configurations, so the roughly 3× gap illustrates context sensitivity rather than a controlled estimate of the context-length effect.
+
+On the live profile, `ncmoe=17` failed during initialization both with the cache on (*while allocating 128 MiB of KV cache*) and with it off (*while allocating 208 MiB of compute buffers*), whereas `ncmoe=20` loaded. That is an infeasibility result for the tested configuration, not a throughput comparison, and it does not locate the boundary between 17 and 20. Separately, 19 of 33 coding runs (*11 tasks × 3 attempts*) passed hidden tests (*57.6%; [Appendix A](#a-coding-evaluation)*), a bounded task-quality check rather than a throughput result.
+
+These findings are specific to one model, one host, one runtime, one context length, and one prompt family. [Section VIII](#viii-limitations) and [LIMITATIONS.md](LIMITATIONS.md) bound the claims.
 
 ![Figure 1 — Tested serving path and memory split](figures/fig_setup.svg)
 
 **Figure 1 — Tested serving path and memory split.**
-*Schematic: the request path and measured memory split, not a data plot. On the tested host, MTP-on reached 11,588 MiB peak VRAM versus 10,595 MiB with MTP off. Exact flags: [HARDWARE-AND-RUNTIME.md](HARDWARE-AND-RUNTIME.md).*
+*Schematic: request path and measured GPU memory split. Peak VRAM was 10,595 MiB with MTP off and 11,588 MiB with MTP on under the tested configurations. Full flags: [HARDWARE-AND-RUNTIME.md](HARDWARE-AND-RUNTIME.md).*
 
-Raw traces, table provenance and per-claim status are documented in
-[EVIDENCE.md](EVIDENCE.md). Every table in this article is regenerated from
-committed inputs by the supplied scripts.
+Raw traces, data provenance, and supporting evidence for individual claims are documented in [EVIDENCE.md](EVIDENCE.md). Every table in this article is regenerated from committed inputs by the supplied scripts.
 
 ## II. Depth-0 throughput and the long-context gap
 
@@ -115,7 +124,7 @@ The protocol is deliberately simple:
 - a unique nonce per request
 - `cache_n == 0` on every retained run
 - interleaved A/B arms
-- warmups discarded
+- two warmups discarded per server start
 - at least five retained runs per arm
 - all retained runs reported, including outliers
 - mean and SEM reported
@@ -128,6 +137,10 @@ off → on → on → off
 ```
 
 The block structure provides some protection against time-dependent drift while retaining independent requests for the two arms. The MTP experiment contains **10 retained runs per arm**, five per block.
+
+The documented arms used identical shared serving settings and differed in their speculative-decoding configuration: MTP off used `--spec-type none`, while MTP on used `--spec-type draft-mtp --spec-draft-n-max 2`. All other flags, including `--moe-cache on`, `--n-cpu-moe 20`, and the KV-cache types, were shared. Arm flags were not captured in the per-run traces, so this matching rests on the documented run configuration rather than on trace metadata.
+
+One initial on-block was discarded because a stale server held its port and was rerun after cleanup; no retained run was excluded for its result. The retained set includes the slowest on-arm run (21.4 t/s).
 
 A small-prompt smoke test and a depth-0 benchmark were not used as substitutes for the long-context measurement. Single-point measurements were also not used as the basis for the primary claims.
 
@@ -149,6 +162,8 @@ When expert layers are kept on the CPU, the serving path has to access those exp
 | `ncmoe=20`, cache off | **<!-- claim:cache_off -->308.5<!-- /claim --> t/s** |
 | `ncmoe=20`, cache soft | 313.2 t/s |
 | `ncmoe=20`, cache on | **<!-- claim:cache_on -->775.7<!-- /claim --> t/s** |
+
+The three 1k rows share the context length and `ncmoe=20`; the bench ledger does not record the prompt text or sampling settings, so this is a configuration comparison rather than a fully traced A/B.
 
 ![Figure 3 — Expert-cache effect on prefill](figures/fig_moe_cache.png)
 
@@ -199,7 +214,7 @@ The model provides a draft head. The runtime can use:
 
 to propose multiple tokens before the main model verifies them.
 
-The primary experiment compares MTP off and on using the same live 29B configuration.
+The primary experiment compares MTP off and on using the same live 29B configuration. The documented arms used identical shared serving settings and differed in their speculative-decoding configuration; all other flags, including `--moe-cache on`, were shared.
 
 ### A. Results
 
@@ -226,9 +241,9 @@ The run-level distribution is shown below.
 
 The measured decode rate increased from **14.79 to 38.56 t/s**, a gain of **160.7%**.
 
-The corresponding prefill measurements changed by only **−1.19%**, which is inside the study's approximately 4% operational noise threshold.
+The corresponding prefill measurements changed by only **−1.19%**, which is below the study's approximately 4% operational noise threshold. That threshold is a guard against over-reading small deltas, not an equivalence test.
 
-MTP therefore produced a large measured change in decode without a comparable change in prefill.
+Under the documented shared serving configuration, the MTP-on arm therefore produced a large measured change in decode without a comparable change in prefill.
 
 The additional memory cost was approximately:
 
@@ -245,9 +260,9 @@ For the two arms:
 
 - MTP off: SEM 0.38 t/s
 - MTP on: SEM 1.99 t/s
-- combined difference interval: approximately **±<!-- claim:mtp_ci_half -->4.58<!-- /claim --> t/s**
+- combined difference interval: approximately **±<!-- claim:mtp_ci_half -->4.58<!-- /claim --> t/s**, i.e. **[19.19, 28.34] t/s**
 
-The interval uses a Welch standard error and the conservative multiplier `t(df=9)=2.262`; the Welch–Satterthwaite degrees of freedom are approximately 9.66.
+The interval is an unpaired 95% confidence interval for the difference in means. It uses a Welch standard error and the conservative multiplier `t(df=9)=2.262`; the Welch–Satterthwaite degrees of freedom are approximately 9.66. Ten runs per arm were retained; two warmups per server start were discarded; all retained runs were reported, including the 21.4 t/s outlier. One initial on-block was discarded for a port conflict with a stale server and rerun; it was not excluded for its result. The interval covers run-to-run variation under the documented design; it does not cover uncertainty from undocumented per-run configuration.
 
 The two experimental blocks moved in the same direction:
 
@@ -262,9 +277,9 @@ These block means are descriptive; they are not used as a separate block-level c
 
 The strongest conclusion is deliberately narrow:
 
-> **On this exact 29B / RTX 3060 / 64k / runtime configuration, MTP with `n-max=2` produced a large increase in measured deep-context decode throughput.**
+> **On this exact 29B / RTX 3060 / 64k / runtime configuration, the MTP-on arm with `n-max=2` produced a large increase in measured deep-context decode throughput.**
 
-It does not establish that `n-max=2` is the optimal draft count, that the same percentage will occur on another GPU or model, or that another prompt will produce the same acceptance rate. Acceptance is content-dependent, so the prompt is part of the experimental configuration. The broader boundary conditions are in [LIMITATIONS.md](LIMITATIONS.md).
+The arms were documented as identical in their shared serving settings and different in their speculative-decoding configuration. Because per-run flags were not captured in the traces, that matching is documented rather than trace-verifiable. The comparison does not establish that `n-max=2` is the optimal draft count, that the same percentage will occur on another GPU or model, or that another prompt will produce the same acceptance rate. Acceptance is content-dependent, so the prompt is part of the experimental configuration. The broader boundary conditions are in [LIMITATIONS.md](LIMITATIONS.md).
 
 An earlier single-point observation put MTP-on decode near 30 t/s at approximately 54.6k prompt depth. The controlled A/B is the stronger evidence and supersedes that estimate as the principal measurement.
 
@@ -305,7 +320,7 @@ A smaller, non-MTP sibling configuration indicated that `ncmoe=17` was a useful 
 | Candidate, cache on | 17 | **FAIL — OOM** |
 | Control, cache off | 17 | **FAIL — OOM** |
 
-The failures occurred while creating the MTP context:
+Both failures occurred during initialization; the run record places them at MTP-context creation:
 
 - cache-on failed while allocating a 128 MiB KV-cache allocation;
 - cache-off failed while allocating 208 MiB of compute buffers.
@@ -371,7 +386,7 @@ It is most appropriate for workloads that process long context and generate comp
 
 **Keep the expert cache enabled.**
 
-The controlled sibling measurement showed approximately **2.5×** higher prefill with the cache enabled at 1k context:
+The recorded sibling measurement showed approximately **2.5×** higher prefill with the cache enabled at 1k context:
 
 ```text
 308.5 t/s → 775.7 t/s
@@ -379,7 +394,7 @@ The controlled sibling measurement showed approximately **2.5×** higher prefill
 
 At 64k, the cache-off sibling configuration timed out with a prefill rate below 73 t/s, while cache-enabled configurations reached approximately 677–712 t/s depending on the tested configuration.
 
-The controlled cache comparison is on the 28B sibling, so this should be treated as supporting evidence rather than a 29B A/B result.
+The cache comparison is on the 28B sibling, so this should be treated as supporting evidence rather than a 29B A/B result.
 
 ### C. Maximum context
 
@@ -409,8 +424,8 @@ On the tested RTX 3060 configuration:
 
 - depth-0 generation reached **46.0 t/s** on the 28B benchmark sibling, while decode after a full 64k prompt was approximately **15.3 t/s**;
 - the expert cache increased sibling prefill from **308.5 to 775.7 t/s** at 1k context;
-- MTP increased live 29B deep-context decode from **14.79 to 38.56 t/s** at a 64k context setting;
-- MTP cost approximately **993 MiB of additional peak VRAM** and **1.7 GiB of host RAM**;
+- the MTP-on arm increased live 29B deep-context decode from **14.79 to 38.56 t/s** at a 64k context setting;
+- the MTP arm cost approximately **993 MiB of additional peak VRAM** and **1.7 GiB of host RAM**;
 - a memory split that worked on the sibling model did not automatically work on the live 29B MTP configuration.
 
 The practical lesson is straightforward:

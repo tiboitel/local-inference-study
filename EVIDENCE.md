@@ -55,6 +55,13 @@ section reference in `data/sources-bench.json`. Regenerating their CSV does not
 make the underlying measurement self-contained; it re-derives the table from a
 committed ledger.
 
+Per-arm flags for the MTP comparison were not captured in the per-run traces.
+The run record documents identical shared serving settings and a single
+difference in the speculative-decoding configuration (`--spec-type none` vs
+`--spec-type draft-mtp --spec-draft-n-max 2`), with `--moe-cache on` shared.
+That matching is documented but is not auditable from the committed traces
+alone.
+
 ## Claim and figure provenance
 
 - **Claim registry.** [`data/claims.json`](data/claims.json) binds each marked

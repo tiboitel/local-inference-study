@@ -6,7 +6,7 @@
 
 **Scope.** One model (Q4_K_M 29B-class MoE), one host (RTX 3060 12 GB,
 i7-9700K, 32 GB), one serving build (`bcb85fc`), one 64k context, one fixed
-long-prompt family. The MTP result is the live 29B profile; the controlled
+long-prompt family. The MTP result is the live 29B profile; the
 expert-cache and depth-0 comparisons use the 28B bench sibling. These are
 configuration-specific findings, not universal speedup estimates.
 
@@ -20,9 +20,9 @@ from committed traces.
 
 | # | Finding | Configuration | Cost / caveat | Evidence |
 |---|---|---|---|---|
-| 1 | **MTP speculative decoding more than doubles deep-context decode at 64k: 14.79 → 38.56 t/s (+160.7%)**, while prefill is unchanged (−1.19%, inside the ~4% operational threshold). | Live 29B MTP profile, 10 runs/arm, ~57.9k prompt | **+993 MiB peak VRAM**, ~1.7 GiB host RAM; not REPRODUCIBLE (private runner) | **MEASURED + REGENERATED** — [mtp_ab.csv](results/mtp_ab.csv) |
+| 1 | **MTP more than doubles deep-context decode at 64k in the documented shared configuration: 14.79 → 38.56 t/s (+160.7%)**, while prefill changes by −1.19%, below the ~4% operational threshold. | Live 29B MTP profile, 10 runs/arm, ~57.9k prompt; identical shared serving settings, different speculative-decoding configuration | **+993 MiB peak VRAM**, ~1.7 GiB host RAM; not REPRODUCIBLE (private runner) | **MEASURED + REGENERATED** — [mtp_ab.csv](results/mtp_ab.csv) |
 | 2 | **Depth-0 `llama-bench` measures 46.0 t/s, but only ~15 t/s once a full 64k prompt is in front of it (~3× in this comparison).** Depth-0 is a valid baseline for model-only generation; it does not capture the long-context request path. | Both rows are 28B bench-sibling measurements; the deep row is a server request, not the live 29B profile | Different configs within the sibling; this is a measured gap, not a universal ratio | **MEASURED (sibling)** — [deep_vs_depth0.csv](results/deep_vs_depth0.csv) |
-| 3 | **The MoE expert cache is the prefill lever: 308 → 776 t/s (~2.5×) in the controlled short-context A/B.** At 64k, cache-off prefill collapses below 73 t/s, versus ~677–712 t/s with the cache on. | 28B bench sibling, 1k controlled A/B; 64k rows are sibling measurements | Spends spare VRAM; deep decode stays ~14–15 t/s; 64k no-cache is a timeout upper bound | **MEASURED (sibling) + REGENERATED** — [moe_cache.csv](results/moe_cache.csv) |
+| 3 | **The MoE expert cache is the prefill lever: 308 → 776 t/s (~2.5×) in the short-context comparison.** At 64k, cache-off prefill collapses below 73 t/s, versus ~677–712 t/s with the cache on. | 28B bench sibling, 1k comparison; prompt/sampling not recorded; 64k rows are sibling measurements | Spends spare VRAM; deep decode stays ~14–15 t/s; 64k no-cache is a timeout upper bound | **MEASURED (sibling) + REGENERATED** — [moe_cache.csv](results/moe_cache.csv) |
 
 ![Three measured levers](figures/fig_overview.png)
 
@@ -54,10 +54,13 @@ estimates general performance on unseen coding tasks.
 [data/raw/mtp/](data/raw/mtp/) · rebuild: `python scripts/build_results.py &&
 python scripts/make_figures.py`. Live 29B MTP profile, 10 kept runs per arm,
 interleaved `off → on → on → off`, cold prefill (`cache_n == 0`), ~57.9k-token
-prompt. Decode 14.79 → 38.56 t/s (+160.7%, combined 95% CI ±4.58). Prefill
-645 → 637 t/s (−1.19%). Cost: +993 MiB peak VRAM and ~1.7 GiB host RAM.
-Acceptance 0.838 (sd 0.070). The difference interval is unpaired: independent
-requests, Welch SE, conservative t(df=9)=2.262; Welch df≈9.66.*
+prompt. Decode 14.79 → 38.56 t/s (+160.7%, unpaired 95% CI [19.19, 28.34],
+also reported as ±4.58). Prefill 645 → 637 t/s (−1.19%, below the ~4%
+operational threshold). Cost: +993 MiB peak VRAM and ~1.7 GiB host RAM.
+Acceptance 0.838 (sd 0.070). The documented arms share their serving settings
+and differ in their speculative-decoding configuration; per-run flags were not
+captured. The difference interval is unpaired:
+independent requests, Welch SE, conservative t(df=9)=2.262; Welch df≈9.66.*
 
 ![Every kept MTP run](figures/fig_mtp_runs.png)
 
@@ -77,9 +80,10 @@ a unique nonce — so no paired-difference interval is claimed.*
 | Architecture | sparse Mixture-of-Experts, ~29B total |
 | Context | 64k (`-c 65536`) |
 | Expert offload | `--n-cpu-moe 20` |
-| Speculative decoding | `--spec-type draft-mtp --spec-draft-n-max 2` |
+| MTP off arm | `--spec-type none` |
+| MTP on arm | `--spec-type draft-mtp --spec-draft-n-max 2` |
 | KV cache | `turbo4` (K) / `turbo3` (V) |
-| Expert cache | `--moe-cache on` |
+| Expert cache | `--moe-cache on` (both arms) |
 | Build | `llama.cpp` (KV-cache fork, `turbo4`/`turbo3`) @ `bcb85fc3ae85efa0f5f392c6c880dfc524923860` |
 
 ![Tested serving path and memory split](figures/fig_setup.svg)
@@ -99,9 +103,9 @@ and flag detail: [HARDWARE-AND-RUNTIME.md](HARDWARE-AND-RUNTIME.md).
 
 - The *magnitudes* for this exact configuration: 64k context, `ncmoe=20`, MTP
   `n-max=2`, `turbo4`/`turbo3`, this build, this prompt family.
-- MTP raised deep decode from 14.79 to 38.56 t/s while prefill stayed inside the
-  operational noise threshold.
-- The controlled sibling A/B showed a ~2.5× prefill gain from the expert cache;
+- The MTP-on arm raised deep decode from 14.79 to 38.56 t/s while prefill
+  changed by −1.19%, below the operational noise threshold.
+- The sibling comparison showed a ~2.5× prefill gain from the expert cache;
   the live 29B `ncmoe=17` load probe failed while `ncmoe=20` loaded.
 - End-to-end coding completion under the shipped sampling, reported as a
   run-level rate with a run-level Wilson interval, a task-clustered bootstrap
