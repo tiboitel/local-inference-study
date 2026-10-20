@@ -43,7 +43,7 @@ beside every number in `ARTICLE.md`.
 |---|---|---|---|---|---|
 | MTP decode 14.79 → 38.56 t/s | `mtp_tg_off`, `mtp_tg_on`, `mtp_delta`, `mtp_delta_pct` | Primary 29B | `data/raw/mtp/` | `results/mtp_ab.csv`, `results/mtp_comparison.csv` | MEASURED, REGENERATED; not independently reproducible |
 | MTP per-run distribution and block means | `mtp_ci_half`, `mtp_accept` | Primary 29B | `data/raw/mtp/` | `results/mtp_runs.csv`, `results/mtp_blocks.csv` | MEASURED, REGENERATED; not independently reproducible |
-| Depth-0 46.0 t/s vs deep 15.3 t/s | `depth0_tg`, `deep_tg` | Supporting 28B | `data/sources-bench.json` §06/§07 | `results/deep_vs_depth0.csv` | MEASURED; two configurations |
+| Depth-0 46.0 t/s vs deep 15.3 t/s | `depth0_tg`, `deep_tg` | Supporting 28B | `data/sources-bench.json` §06/§07 | `results/deep_vs_depth0.csv` | MEASURED; two configurations (`llama-bench` `ncmoe=18` vs server `ncmoe=17`) |
 | Expert cache 308.5 → 775.7 t/s at 1k | `cache_off`, `cache_on` | Supporting 28B | `data/sources-bench.json` §04 | `results/moe_cache.csv` | MEASURED, REGENERATED from a non-self-contained ledger |
 | 64k prefill with/without cache | — | Supporting 28B | `data/sources-bench.json` §06/§07 | `results/prefill_vs_ctx.csv`, `results/moe_cache.csv` | MEASURED, partially ESTIMATED (timeout upper bound) |
 | `ncmoe=17` OOM at 64k | — | Primary 29B | `data/raw/p4/probe-results.txt` | `results/ncmoe_probe_29b.csv` | MEASURED |

@@ -151,12 +151,18 @@ def fig_moe_cache():
 
 def fig_deep_vs_depth0():
     rows = load("deep_vs_depth0.csv")
-    labels = [r["mode"] for r in rows]
+    labels = {
+        "depth0_llama_bench": "Depth-0 baseline\n(llama-bench)",
+        "deep_server_measured": "Deep-context\nsteady state",
+        "deep_server_measured_prefill_gen": "Deep-context\nfirst generation",
+    }
+    names = [labels.get(r["mode"], r["mode"]) for r in rows]
     tg = [f(r["tg_t_s"]) for r in rows]
-    fig, ax = plt.subplots(figsize=(6.5, 3.6))
-    ax.bar(labels, tg, color=["#c44e52", "#55a868", "#55a868"])
+    fig, ax = plt.subplots(figsize=(7.0, 3.8))
+    ax.bar(names, tg, color=["#c44e52", "#55a868", "#55a868"])
     for i, v in enumerate(tg):
         ax.annotate(f"{v:.1f}", (i, v), ha="center", va="bottom")
+    ax.set_ylim(0, max(tg) * 1.12)
     ax.set_ylabel("decode TG (t/s)")
     ax.set_title("Depth-0 benchmark vs measured deep-context decode")
     fig.tight_layout(); fig.savefig(FIG / "fig_deep_vs_depth0.png", dpi=150)

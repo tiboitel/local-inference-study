@@ -8,7 +8,7 @@ This study examines long-context inference for a **29B Mixture-of-Experts** mode
 
 In the primary **64k-context** configuration, using approximately **57.9k-token prompts**, the MTP-on arm raised measured deep-context decode from **14.79** to **38.56 tokens/s** (*+160.7%*) under the documented shared serving configuration, with an estimated difference of **+23.77 tokens/s** (*unpaired 95% CI: [19.19, 28.34] tokens/s; n = 10 per arm*). The arms used identical shared serving settings; their speculative-decoding configuration differed (`--spec-type none` vs `--spec-type draft-mtp --spec-draft-n-max 2`). Prefill was **645.1 tokens/s** vs **637.4 tokens/s** (*-1.19%*), below the study's approximately **4%** operational threshold, which does not establish statistical equivalence. The MTP arm used an additional **+993 MiB of peak VRAM** and about **+1.7 GiB of peak host RAM**; both are measured increases in per-run peak memory.
 
-Additional experiments on a related **28B MoE** model (*Qwen 28B REAP*) show a different pattern: an MoE expert cache raised short-context prefill from **308.5** to **775.7 tokens/s** while deep decode stayed around **14–15 tokens/s**. A separate depth-0 benchmark reported **46.0 tokens/s** versus **15.3 tokens/s** after a full **64k prompt**. The **46.0 tokens/s** and **15.3 tokens/s** are not directly comparable; the **~3x** is a measured illustration on a related model, not a controlled ratio.
+Additional experiments on a related **28B MoE** model (*Qwen 28B REAP*) show a different pattern: an MoE expert cache raised short-context prefill from **308.5** to **775.7 tokens/s** while deep decode stayed around **14–15 tokens/s**. A separate depth-0 benchmark reported **46.0 tokens/s** versus **15.3 tokens/s** after a long prompt in a **64k-context configuration**. The **46.0 tokens/s** and **15.3 tokens/s** are not directly comparable; the **~3x** is a measured illustration on a related model, not a controlled ratio.
 
 These measurements characterize **one model**, **one host**, **one runtime**, **one context length** and **one prompt family**.
 
@@ -54,7 +54,7 @@ Each section states which track it uses. The primary configuration is summarized
 
 In the primary 64k experiment, the MTP-on arm reached **38.56 t/s** deep-context decode against **14.79 t/s** for MTP off (**+160.7%**) under the documented shared serving configuration. The estimated difference was **+23.77 t/s** (*unpaired 95% CI [19.19, 28.34] t/s; 10 retained runs per arm*). The documented arms used identical shared serving settings and differed in their speculative-decoding configuration; per-run flags were not captured in the traces, so this matching is documented rather than trace-verifiable. Prefill was **637.4 vs 645.1 t/s** (**−1.19%**), below the study's approximately 4% operational threshold. That threshold is used to avoid over-interpreting small differences; it does not establish statistical equivalence. The MTP arm used **+993 MiB of peak VRAM** (*11,588 of 12,288 MiB*) and approximately **+1.7 GiB of host RAM**.
 
-On the supporting 28B track, enabling the expert cache at 1k context with `ncmoe=20` raised prefill from **308.5 to 775.7 t/s** (*about 2.5×; the `soft` mode reached 313.2 t/s*), while deep decode stayed around **14–15 t/s** across the tested cache and `ncmoe` configurations. A depth-0 benchmark measured **46.0 t/s**, against **15.3 t/s** after a full 64k prompt. Those two rows come from different sibling configurations, so the roughly 3× gap illustrates context sensitivity rather than a controlled estimate of the context-length effect.
+On the supporting 28B track, enabling the expert cache at 1k context with `ncmoe=20` raised prefill from **308.5 to 775.7 t/s** (*about 2.5×; the `soft` mode reached 313.2 t/s*), while deep decode stayed around **14–15 t/s** across the tested cache and `ncmoe` configurations. A depth-0 benchmark measured **46.0 t/s**, against **15.3 t/s** after a long prompt in a 64k-context configuration. Those two rows come from different sibling configurations, so the roughly 3× gap illustrates context sensitivity rather than a controlled estimate of the context-length effect.
 
 On the live profile, `ncmoe=17` failed during initialization both with the cache on (*while allocating 128 MiB of KV cache*) and with it off (*while allocating 208 MiB of compute buffers*), whereas `ncmoe=20` loaded. That is an infeasibility result for the tested configuration, not a throughput comparison, and it does not locate the boundary between 17 and 20. Separately, 19 of 33 coding runs (*11 tasks × 3 attempts*) passed hidden tests (*57.6%; [Appendix A](#a-coding-evaluation)*), a bounded task-quality check rather than a throughput result.
 
@@ -69,47 +69,44 @@ Raw traces, data provenance, and supporting evidence for individual claims are d
 
 ## II. Depth-0 throughput and the long-context gap
 
-`llama-bench` is useful for measuring baseline generation throughput, but its token-generation measurement starts at depth 0: there is no large conversation history in front of the model.
+`llama-bench` is useful for measuring baseline generation throughput, but its token-generation measurement starts at depth 0. In `llama-bench`, depth is the number of prompt tokens used to prefill the KV cache before generation is timed; depth 0 means no prompt tokens are prefilled. That measurement answers a specific question:
 
-That is a useful measurement when the question is:
-
-> How quickly can this model generate when there is no existing context?
+> How quickly can this model generate with no preceding prompt tokens?
 
 It is a different question from:
 
-> How quickly can this serving configuration generate after processing a 64k-token request?
+> How quickly can this serving configuration generate after a long prompt has populated the KV cache?
 
 In the available 28B benchmark-sibling comparison:
 
-| Measurement | Decode throughput |
-|---|---:|
-| `llama-bench` token generation, depth 0 | **<!-- claim:depth0_tg -->46.0<!-- /claim --> t/s** |
-| After a full 64k prompt | **<!-- claim:deep_tg -->15.3<!-- /claim --> t/s** |
+| Measurement | Path and configuration | Decode throughput |
+|---|---|---:|
+| Depth-0 baseline | `llama-bench`, `ncmoe=18`, `--moe-cache on` | **<!-- claim:depth0_tg -->46.0<!-- /claim --> t/s** |
+| Deep-context, steady state | server request, `ncmoe=17`, `--moe-cache on` | **<!-- claim:deep_tg -->15.3<!-- /claim --> t/s** |
+| Deep-context, first generation | server request, `ncmoe=17`, `--moe-cache on` | 15.7 t/s |
+
+The two server rows come from a long prompt in a 64k-context configuration. The 15.7 t/s row is the first generation after prefill; the 15.3 t/s row is steady-state decode with the prompt cached.
 
 ![Figure 2 — Depth-0 vs deep-context decode](figures/fig_deep_vs_depth0.png)
 
 **Figure 2 — Depth-0 vs deep-context decode.**
-*Data: [deep_vs_depth0.csv](results/deep_vs_depth0.csv) · source rows: [data/sources-bench.json](data/sources-bench.json) §06/§07 · supporting track: 28B benchmark sibling. The depth-0 row is `llama-bench`; the deep row is a server request. The two rows do not carry a matched VRAM reading.*
+*Data: [deep_vs_depth0.csv](results/deep_vs_depth0.csv) · source rows: [data/sources-bench.json](data/sources-bench.json) §06/§07 · supporting track: 28B benchmark sibling (`Qwen3.6-28B-REAP20-A3B-Q4_K_M`, RTX 3060 12 GB). The three bars are the table rows. The rows do not carry matched VRAM readings.*
 
-In this comparison, the depth-0 result is roughly **3× higher** than the observed deep-context decode rate.
+The depth-0 row differs from the deep-context rows in tool and offload setting as well as context state. In this comparison, the depth-0 result is about **3.0×** the steady-state deep-context decode rate (46.0 ÷ 15.3). That illustrates the size of the gap in these configurations; it is not an estimate of the context-length effect alone.
 
 That does not make depth-0 benchmarking useless. It means that it should not be used as a proxy for the full request path when the workload routinely carries a large context. For an agentic workload, the relevant sequence is closer to:
 
 ```text
 Large prompt
     ↓
-Prefill
+Prefill: process prompt, populate KV cache
     ↓
-Long-context state
-    ↓
-Decode
+Decode: generate with populated KV cache
 ```
 
-A benchmark that measures only the final step starting from an empty context leaves out much of the workload.
+A benchmark that times only the last step from an empty cache omits prompt processing and measures decode in a different runtime state. (`llama-bench` also excludes tokenization and sampling, so its figure is not an end-to-end request rate.)
 
-There is a similar issue with very small prompts. A 25-token request in this setup carries approximately 62 ms of fixed per-request overhead, so its apparent tokens-per-second number is dominated by overhead rather than by the behavior of a long-context prefill.
-
-For this reason, the measurements below use the actual server request path wherever possible.
+For these reasons, the measurements below use the actual server request path wherever possible.
 
 ## III. Measurement protocol
 
@@ -422,7 +419,7 @@ The main result of this study is not that one particular optimization is univers
 
 On the tested RTX 3060 configuration:
 
-- depth-0 generation reached **46.0 t/s** on the 28B benchmark sibling, while decode after a full 64k prompt was approximately **15.3 t/s**;
+- depth-0 generation reached **46.0 t/s** on the 28B benchmark sibling, while decode after a long prompt in a 64k-context configuration was approximately **15.3 t/s**;
 - the expert cache increased sibling prefill from **308.5 to 775.7 t/s** at 1k context;
 - the MTP-on arm increased live 29B deep-context decode from **14.79 to 38.56 t/s** at a 64k context setting;
 - the MTP arm cost approximately **993 MiB of additional peak VRAM** and **1.7 GiB of host RAM**;

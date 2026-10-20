@@ -116,7 +116,8 @@ Rejected framings (recorded so they are not repeated):
   the full request path. In this study's comparison it overstated deep-context
   decode by ~3×; benchmark the actual path at representative context lengths
   when that is the question.
-- **Small-prompt smoke tests as "baseline".** A 25-token request is ~97% fixed
-  per-request overhead (~62 ms); its t/s says nothing about prefill.
+- **Small-prompt smoke tests as "baseline".** Very short requests can be
+  dominated by per-request overhead; their aggregate tokens/s is not a proxy
+  for long-context prefill or decode.
 - **A single-point measurement.** Every quantitative claim here has ≥5 kept
   runs, interleaved arms, and a reported uncertainty.

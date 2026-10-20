@@ -45,7 +45,8 @@ class MarkdownRenderingTests(unittest.TestCase):
 
     def test_conceptual_blocks_are_fenced_text(self):
         blocks = [
-            "Large prompt\n    ↓\nPrefill\n    ↓\nLong-context state\n    ↓\nDecode",
+            "Large prompt\n    ↓\nPrefill: process prompt, populate KV cache\n"
+            "    ↓\nDecode: generate with populated KV cache",
             "off → on → on → off",
             "--spec-type draft-mtp\n--spec-draft-n-max 2",
             "turbo4\nturbo3",
