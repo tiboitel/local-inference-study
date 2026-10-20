@@ -6,21 +6,59 @@ misleading; we use them only as a negative control.
 
 ## Protocol (all throughput experiments)
 
-1. **Real path.** Every throughput number comes from `POST /v1/chat/completions`
-   with `stream: true`, tool schemas offered from `GET /tools`, and
-   `cache_prompt: false`.
+1. **Real path; one run is one request.** Every throughput number comes from a
+   single `POST /v1/chat/completions` call with `stream: true`, tool schemas
+   offered from `GET /tools`, and `cache_prompt: false`. A run is one HTTP
+   request, not an aggregate over several requests.
 2. **Cold prefill.** A unique nonce per request guarantees `cache_n == 0`, so
-   reported prompt-eval is a true cold prefill and not a cache hit.
-3. **Arm discipline.** Arms are interleaved in alternated then reversed block
-   order (`off → on → on → off`), so drift cannot masquerade as a treatment
-   effect.
+   reported prompt-eval is a true cold prefill and not a cache hit. `cache_n` is
+   the number of prompt tokens the server was able to reuse from its prompt
+   cache for that request. Zero therefore rules out prompt-prefix reuse; it does
+   not imply that kernel, page or filesystem caches were cold, and it does not
+   touch the expert-weight cache behind `--moe-cache on`, which is shared by
+   both arms by design.
+3. **Arm discipline: blocked and reversed.** Arms run in `off → on → on → off`
+   block order, where each arrow is a phase of five consecutive kept requests
+   against one server start, with two warmups discarded before that start. The
+   arm flags are startup flags, so every phase is its own server start, and the
+   live service was stopped while a block ran and restarted afterwards. With
+   five requests per phase and the two phases of each arm placed symmetrically
+   in the run order, a linear trend across the run contributes the same total to
+   both arm means and cancels in the pooled difference to first order. The
+   reversal does not remove within-phase changes, non-linear drift, thermal or
+   background-load effects, or carryover from the preceding request.
 4. **Warmups discarded, ≥5 kept runs per arm.** Warmup runs are thrown away;
    every kept run is reported in the raw trace, including outliers.
-5. **Report the mean and the SEM**, and treat a delta smaller than the
+5. **Report the mean, the SD, and the SEM**, and treat a delta smaller than the
    operational noise threshold (~4% in this lab) as no result.
-6. **Sample the resource side per request** — peak VRAM, host RAM, GPU
-   utilization, watts, and swap — because a throughput win that does not fit in
-   VRAM is not a win.
+6. **Sample the resource side per request** — peak VRAM and host RAM, recorded
+   as the maximum observed by a sampler running about once per second during the
+   request (a spike shorter than the sampling interval would be missed) —
+   because a throughput win that does not fit in VRAM is not a win. GPU
+   utilization, power and swap were **not** sampled per request in this
+   experiment; they must not be cited as per-request measurements. The sampling
+   tool for the VRAM/RAM peaks was not recorded; only the 1 Hz interval is
+   documented.
+
+### What one run measures
+
+| Field | Definition |
+|---|---|
+| `pp_t_s` | `timings.prompt_per_second` — prompt tokens ÷ prompt time (prefill only) |
+| `tg_t_s` | `timings.predicted_per_second` — generated tokens ÷ decode time (decode only) |
+| `wall_s` | harness timing of the whole request, HTTP call to last streamed chunk |
+| `prompt_s`, `decode_s`, `predicted_n` | the same timings converted to seconds and token counts per request |
+
+`tg_t_s` excludes prompt processing, tokenization, sampling and HTTP overhead,
+so it is a decode rate and not a request latency. It equals
+`predicted_n / predicted_ms × 1000` on every retained run, and the decode window
+opens after prompt processing, so generation of the first token is inside it.
+The traces' `usage` block is empty, so the generated-token count has no second
+source to check against. On this workload the request is prefill-dominated: a
+cold ~58k-token prefill takes about 90 s while decode takes a few seconds. Time
+to first token would be `prompt_s` plus the first decode step, and inter-token
+latency is the inverse of `tg_t_s`; neither was recorded directly, so neither is
+published as a measurement.
 
 ### The noise threshold
 
@@ -47,8 +85,9 @@ CI95    = diff +/- t(df=min(n_off, n_on)-1) * SE_diff
 
 The conservative multiplier `t(9)=2.262` is used even though the
 Welch–Satterthwaite degrees of freedom are about 9.66. The difference in means
-is +23.77 t/s, with a 95% interval of [19.19, 28.34] t/s (reported
-elsewhere as ±4.58 t/s). The interval is in
+is +23.77 t/s, with a nominal 95% interval of [19.19, 28.34] t/s (reported
+elsewhere as ±4.58 t/s), computed under an independence assumption across
+requests. The interval is in
 [`results/mtp_comparison.csv`](results/mtp_comparison.csv); block-level means
 are in [`results/mtp_blocks.csv`](results/mtp_blocks.csv). The gate recomputes
 both tables from the raw traces.
@@ -57,8 +96,23 @@ All interval fields are rounded independently from the unrounded calculation,
 so the displayed endpoints can appear asymmetric by 0.01 t/s around the
 displayed estimate (`[19.19, 28.34]` around `23.77`). The conservative
 multiplier yields a slightly wider interval than the Welch-df multiplier, by
-design. The interval covers run-to-run variation under the documented design;
-it does not cover uncertainty from undocumented per-run configuration.
+design. The interval covers request-to-request variation under the documented
+design; it does not cover uncertainty from undocumented per-run configuration.
+
+The interval also treats the ten kept requests of an arm as independent
+observations. They are two groups of five issued against a single server start
+(protocol item 3), so within-phase correlation would make the interval too
+narrow; with two blocks per arm a block-clustered interval is not estimable.
+Read the interval as request-level precision under this design, not as a
+block-level or population-level interval. Strengthening it requires independent
+server starts with randomized or counterbalanced arm order across starts; more
+requests inside one phase would not address the clustering.
+
+Per-arm SD is published beside the SEM in
+[`results/mtp_ab.csv`](results/mtp_ab.csv) and per-block SD in
+[`results/mtp_blocks.csv`](results/mtp_blocks.csv); the on-arm spread differs
+sharply between blocks (2.42 vs 8.46 t/s), which is why the block table is
+reported next to the pooled interval.
 
 ### Configuration capture and run retention
 
@@ -69,10 +123,16 @@ including `--moe-cache on`, `--n-cpu-moe 20`, and the KV-cache types, were
 shared. Flags were not recorded in the per-run traces; the matching comes from
 the run record.
 
-Two warmups were discarded per server start. One initial on-block was discarded
-because a stale server held its port and was rerun after cleanup; no retained
-run was excluded for its result. The retained set includes the slowest on-arm
-run (21.4 t/s).
+Two warmups were discarded at every server start, and each arm phase was its own
+server start, so warmups are per phase rather than per experiment. One initial
+on-block was discarded because a stale server from the off arm still held port
+8097 when the on-block tried to start; the runner was switched to process
+groups and the block was rerun after cleanup. That exclusion is operational, not
+performance-based: no kept run was excluded for its result, and the rerun start
+followed the same two-warmup procedure. The retained set includes the slowest
+on-arm run (21.4 t/s). Per-run timestamps were not recorded in the traces, so
+the ordering of requests *within* a phase cannot be reconstructed from them; the
+block order comes from the block summaries' `finished_at` stamps.
 
 ## Fidelity: match the shipped sampling
 

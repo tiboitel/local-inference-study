@@ -54,13 +54,15 @@ estimates general performance on unseen coding tasks.
 [data/raw/mtp/](data/raw/mtp/) · rebuild: `python scripts/build_results.py &&
 python scripts/make_figures.py`. Live 29B MTP profile, 10 kept runs per arm,
 interleaved `off → on → on → off`, cold prefill (`cache_n == 0`), ~57.9k-token
-prompt. Decode 14.79 → 38.56 t/s (+160.7%, unpaired 95% CI [19.19, 28.34],
+prompt. Decode 14.79 → 38.56 t/s (+160.7%, request-level unpaired 95% CI [19.19, 28.34],
 also reported as ±4.58). Prefill 645 → 637 t/s (−1.19%, below the ~4%
 operational threshold). Cost: +993 MiB peak VRAM and ~1.7 GiB host RAM.
 Acceptance 0.838 (sd 0.070). The documented arms share their serving settings
 and differ in their speculative-decoding configuration; per-run flags were not
 captured. The difference interval is unpaired:
-independent requests, Welch SE, conservative t(df=9)=2.262; Welch df≈9.66.*
+request-level Welch interval assuming independent requests, conservative
+t(df=9)=2.262, Welch df≈9.66; the clustering caveat is documented in
+[METHODOLOGY.md](METHODOLOGY.md).*
 
 ![Every kept MTP run](figures/fig_mtp_runs.png)
 
@@ -188,11 +190,14 @@ benchmark; imported `llama-bench` rows are labelled as such in each figure's
 provenance, and every generated table traces to a raw run or a sourced row.
 The protocol in brief: `POST /v1/chat/completions` with `stream: true`,
 `cache_prompt: false`, and a unique nonce per request (guaranteeing cold prefill
-via `cache_n == 0`); arms interleaved in alternated then reversed block order;
-warmups discarded and ≥5 kept runs per arm; mean and SEM reported, with a ~4%
-operational threshold (a lab heuristic, not a confidence interval); and VRAM,
-host RAM, GPU utilization, watts, and swap sampled per request. Full protocol
-and rejected framings: [METHODOLOGY.md](METHODOLOGY.md).
+via `cache_n == 0`); one run is one request, arms run in blocked, reversed block
+order (five consecutive kept requests per arm phase); two warmups discarded per
+server start and ≥5 kept runs per arm; mean, SD, and SEM reported, with a ~4%
+operational threshold (a lab heuristic, not a confidence interval); and peak
+VRAM and host RAM sampled per request (maximum observed by a sampler running
+about once per second during the request). GPU utilization, power, and swap were
+**not** sampled per request in this experiment. Full protocol and rejected
+framings: [METHODOLOGY.md](METHODOLOGY.md).
 
 | Path | Purpose |
 |---|---|

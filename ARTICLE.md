@@ -6,7 +6,7 @@
 
 This study examines long-context inference for a **29B Mixture-of-Experts** model (*Qwen 29B REAP*) on a single **RTX 3060** with **12 GB** of **VRAM**. In the context of agentic use, the practical question is not how fast the model generates with an empty context, but what happens when a request arrives with tens of thousands of tokens already in the prompt. The experiments therefore measure the serving path: long-context prefill, subsequent decode, memory pressure, and the serving parameters that affect each stage.
 
-In the primary **64k-context** configuration, using approximately **57.9k-token prompts**, the MTP-on arm raised measured deep-context decode from **14.79** to **38.56 tokens/s** (*+160.7%*) under the documented shared serving configuration, with an estimated difference of **+23.77 tokens/s** (*unpaired 95% CI: [19.19, 28.34] tokens/s; n = 10 per arm*). The arms used identical shared serving settings; their speculative-decoding configuration differed (`--spec-type none` vs `--spec-type draft-mtp --spec-draft-n-max 2`). Prefill was **645.1 tokens/s** vs **637.4 tokens/s** (*-1.19%*), below the study's approximately **4%** operational threshold, which does not establish statistical equivalence. The MTP arm used an additional **+993 MiB of peak VRAM** and about **+1.7 GiB of peak host RAM**; both are measured increases in per-run peak memory.
+In the primary **64k-context** configuration, using approximately **57.9k-token prompts**, the MTP-on arm raised measured deep-context decode from **14.79** to **38.56 tokens/s** (*+160.7%*) under the documented shared serving configuration, with an estimated difference of **+23.77 tokens/s** (*request-level unpaired 95% CI: [19.19, 28.34] tokens/s; n = 10 per arm; independence assumed, see Section V.B*). The arms used identical shared serving settings; their speculative-decoding configuration differed (`--spec-type none` vs `--spec-type draft-mtp --spec-draft-n-max 2`). Prefill was **645.1 tokens/s** vs **637.4 tokens/s** (*-1.19%*), below the study's approximately **4%** operational threshold, which does not establish statistical equivalence. The MTP arm used an additional **+993 MiB of peak VRAM** and about **+1.7 GiB of peak host RAM**; both are measured increases in per-run peak memory.
 
 Additional experiments on a related **28B MoE** model (*Qwen 28B REAP*) show a different pattern: an MoE expert cache raised short-context prefill from **308.5** to **775.7 tokens/s** while deep decode stayed around **14–15 tokens/s**. A separate depth-0 benchmark reported **46.0 tokens/s** versus **15.3 tokens/s** after a long prompt in a **64k-context configuration**. The **46.0 tokens/s** and **15.3 tokens/s** are not directly comparable; the **~3x** is a measured illustration on a related model, not a controlled ratio.
 
@@ -52,7 +52,7 @@ Each section states which track it uses. The primary configuration is summarized
 
 `64k` denotes the 65,536-token context limit. `--n-cpu-moe 20` keeps the experts of 20 transformer layers on the CPU. `turbo4` (K) and `turbo3` (V) are the serving build's quantized KV-cache types. MTP uses the model's draft head to propose tokens that the main model verifies.
 
-In the primary 64k experiment, the MTP-on arm reached **38.56 t/s** deep-context decode against **14.79 t/s** for MTP off (**+160.7%**) under the documented shared serving configuration. The estimated difference was **+23.77 t/s** (*unpaired 95% CI [19.19, 28.34] t/s; 10 retained runs per arm*). The documented arms used identical shared serving settings and differed in their speculative-decoding configuration; per-run flags were not captured in the traces, so this matching is documented rather than trace-verifiable. Prefill was **637.4 vs 645.1 t/s** (**−1.19%**), below the study's approximately 4% operational threshold. That threshold is used to avoid over-interpreting small differences; it does not establish statistical equivalence. The MTP arm used **+993 MiB of peak VRAM** (*11,588 of 12,288 MiB*) and approximately **+1.7 GiB of host RAM**.
+In the primary 64k experiment, the MTP-on arm reached **38.56 t/s** deep-context decode against **14.79 t/s** for MTP off (**+160.7%**) under the documented shared serving configuration. The estimated difference was **+23.77 t/s** (*request-level unpaired 95% CI [19.19, 28.34] t/s; 10 retained runs per arm; independence assumed, see Section V.B*). The documented arms used identical shared serving settings and differed in their speculative-decoding configuration; per-run flags were not captured in the traces, so this matching is documented rather than trace-verifiable. Prefill was **637.4 vs 645.1 t/s** (**−1.19%**), below the study's approximately 4% operational threshold. That threshold is used to avoid over-interpreting small differences; it does not establish statistical equivalence. The MTP arm used **+993 MiB of peak VRAM** (*11,588 of 12,288 MiB*) and approximately **+1.7 GiB of host RAM**.
 
 On the supporting 28B track, enabling the expert cache at 1k context with `ncmoe=20` raised prefill from **308.5 to 775.7 t/s** (*about 2.5×; the `soft` mode reached 313.2 t/s*), while deep decode stayed around **14–15 t/s** across the tested cache and `ncmoe` configurations. A depth-0 benchmark measured **46.0 t/s**, against **15.3 t/s** after a long prompt in a 64k-context configuration. Those two rows come from different sibling configurations, so the roughly 3× gap illustrates context sensitivity rather than a controlled estimate of the context-length effect.
 
@@ -112,32 +112,41 @@ For these reasons, the measurements below use the actual server request path whe
 
 The primary measurements use the server's OpenAI-compatible request path rather than a synthetic token-generation loop.
 
-The protocol is deliberately simple:
+**The experimental unit is one request.** A retained run is a single `POST /v1/chat/completions` call with `stream: true` and the tool schemas offered to the server. It is not an aggregate over several requests: every value in [Section V](#v-mtp-at-64k-live-29b) is computed from the individual kept requests in [results/mtp_runs.csv](results/mtp_runs.csv).
 
-- `POST /v1/chat/completions`
-- `stream: true`
-- tool schemas offered to the server
-- `cache_prompt: false`
-- a unique nonce per request
-- `cache_n == 0` on every retained run
-- interleaved A/B arms
-- two warmups discarded per server start
-- at least five retained runs per arm
-- all retained runs reported, including outliers
-- mean and SEM reported
-- VRAM, host RAM, GPU utilization, power and swap sampled per request
+The protocol applied the following controls:
 
-For the primary MTP comparison, the arms were interleaved in blocks:
+- `cache_prompt: false` and a unique nonce per request.
+- `cache_n == 0` on every retained run. `cache_n` is the number of prompt tokens the server was able to reuse from its prompt cache for that request, so zero means no prompt-prefix reuse and every measured prefill was cold *with respect to the prompt cache*. It does not mean that kernel, page, filesystem or expert-weight caches were cold: the shared `--moe-cache on` setting is an expert-weights cache and is part of both arms by design.
+- The two arms run in blocked, reversed order, five consecutive kept requests per arm phase (below).
+- Two warmups discarded at every server start, then five kept requests per arm phase — **10 kept requests per arm**.
+- All kept requests reported, including outliers; per arm the mean, standard deviation (SD), standard error of the mean (SEM), and the difference interval.
+- Peak VRAM and host RAM recorded per request as the maximum observed by a sampler running about once per second during the request; a spike shorter than the sampling interval would be missed. GPU utilization, power and swap were **not** sampled per request in this experiment; the utilization figure in [Section VI](#vi-kv-cache-and-configuration-limits) comes from a separate observation.
+
+**How the reported numbers are defined.**
+
+- **Deep decode (`tg_t_s`)** is the server's own `timings.predicted_per_second`. On every retained run it equals `predicted_n / predicted_ms × 1000`: generated tokens over the decode window, which opens after prompt processing, so generation of the first token is inside the window while prompt processing, tokenization and HTTP overhead are outside. It is a decode rate, not a request latency. The traces' `usage` block is empty, so the generated-token count has no second source to check against.
+- **Prefill (`pp_t_s`)** is `timings.prompt_per_second`.
+- **Request wall time (`wall_s`)** is the harness's end-to-end timing of one request, from the HTTP call to the last streamed chunk.
+
+For the primary multi-token prediction (MTP) comparison, the arms were interleaved in blocks:
 
 ```text
 off → on → on → off
 ```
 
-The block structure provides some protection against time-dependent drift while retaining independent requests for the two arms. The MTP experiment contains **10 retained runs per arm**, five per block.
+| Block | Execution order | Kept requests |
+|---|---|---:|
+| 1 | MTP off → MTP on | 5 + 5 |
+| 2 | MTP on → MTP off | 5 + 5 |
+
+Each block therefore contributes five kept requests per arm, 10 per arm in total. The arrows are arm phases, not individual requests: a phase is five consecutive requests issued against one server start, after its two warmups. The arm flags are set when the server starts, so each phase required its own server start, with the live service stopped while a block ran and restarted afterwards. The order shown above is reconstructed from the block summaries' `finished_at` stamps; the per-run traces carry no timestamps, so the ordering *within* a phase cannot be re-derived from them.
+
+With five requests per phase and the two phases of each arm placed symmetrically in the run order, a linear trend across the run contributes the same total to both arm means, so it cancels in the pooled difference to first order; both block differences are positive (Section V.B). The reversal does not remove within-phase changes, non-linear drift, thermal or background-load effects, or carryover from the preceding request. Nor are the ten kept requests of an arm ten independent draws: they are two groups of five from one server start. The interval in Section V.B is therefore a request-level interval under this design, not a block-level or population interval.
 
 The documented arms used identical shared serving settings and differed in their speculative-decoding configuration: MTP off used `--spec-type none`, while MTP on used `--spec-type draft-mtp --spec-draft-n-max 2`. All other flags, including `--moe-cache on`, `--n-cpu-moe 20`, and the KV-cache types, were shared. Arm flags were not captured in the per-run traces, so this matching rests on the documented run configuration rather than on trace metadata.
 
-One initial on-block was discarded because a stale server held its port and was rerun after cleanup; no retained run was excluded for its result. The retained set includes the slowest on-arm run (21.4 t/s).
+One initial on-block was discarded because a stale server from the off arm still held port 8097 when the on-block tried to start; the runner was switched to process groups and the block was rerun after cleanup. The exclusion is operational rather than performance-based: no kept request was excluded because of its measured result, and the rerun start followed the same two-warmup procedure. The kept set includes the slowest on-arm run (21.4 t/s).
 
 A small-prompt smoke test and a depth-0 benchmark were not used as substitutes for the long-context measurement. Single-point measurements were also not used as the basis for the primary claims.
 
@@ -220,7 +229,9 @@ The primary experiment compares MTP off and on using the same live 29B configura
 | Retained runs | 10 | 10 | — |
 | Prompt tokens, mean | 57,881 | 57,880 | — |
 | Deep decode | **<!-- claim:mtp_tg_off -->14.79<!-- /claim --> t/s** | **<!-- claim:mtp_tg_on -->38.56<!-- /claim --> t/s** | **+<!-- claim:mtp_delta -->23.77<!-- /claim --> t/s (+<!-- claim:mtp_delta_pct -->160.7<!-- /claim -->%)** |
+| Deep decode, SD | <!-- claim:mtp_tg_sd_off -->1.20<!-- /claim --> t/s | <!-- claim:mtp_tg_sd_on -->6.28<!-- /claim --> t/s | — |
 | Prefill | 645.10 t/s | 637.39 t/s | −1.19% |
+| Prefill, SD | <!-- claim:mtp_pp_sd_off -->6.34<!-- /claim --> t/s | <!-- claim:mtp_pp_sd_on -->6.21<!-- /claim --> t/s | — |
 | MTP acceptance | — | **<!-- claim:mtp_accept -->0.838<!-- /claim -->** | SD 0.070 |
 | Peak VRAM | 10,595 MiB | 11,588 MiB | **+993 MiB** |
 
@@ -234,13 +245,13 @@ The run-level distribution is shown below.
 ![Figure 6 — Every kept MTP run](figures/fig_mtp_runs.png)
 
 **Figure 6 — Every kept MTP run.**
-*Data: [mtp_runs.csv](results/mtp_runs.csv) · live 29B configuration. Each request used a unique nonce, so the two arms are independent rather than paired; the points show the full spread and the short lines are arm means.*
+*Data: [mtp_runs.csv](results/mtp_runs.csv) · live 29B configuration. Each request used a unique nonce, so the arms are unpaired and a paired analysis does not apply; the points show the full spread and the short lines are arm means.*
 
 The measured decode rate increased from **14.79 to 38.56 t/s**, a gain of **160.7%**.
 
 The corresponding prefill measurements changed by only **−1.19%**, which is below the study's approximately 4% operational noise threshold. That threshold is a guard against over-reading small deltas, not an equivalence test.
 
-Under the documented shared serving configuration, the MTP-on arm therefore produced a large measured change in decode without a comparable change in prefill.
+Under the documented shared serving configuration, the MTP-on arm therefore produced a large measured change in decode. The prefill means differ by −1.19%, below the study's approximately 4% operational threshold; that threshold is a guard against over-reading small deltas, not an equivalence test, and this study does not claim that MTP leaves prefill unchanged.
 
 The additional memory cost was approximately:
 
@@ -249,26 +260,30 @@ The additional memory cost was approximately:
 
 The MTP-on configuration reached 11,588 MiB of the available 12,288 MiB VRAM, leaving relatively little headroom.
 
+**Where the request time goes.** Decode is only a small part of a request this large. Mean prefill was <!-- claim:mtp_prompt_s_off -->89.7<!-- /claim --> s (MTP off) and <!-- claim:mtp_prompt_s_on -->90.8<!-- /claim --> s (MTP on), against mean decode of <!-- claim:mtp_decode_s_off -->7.1<!-- /claim --> s and <!-- claim:mtp_decode_s_on -->3.2<!-- /claim --> s for a slightly longer MTP-on output (<!-- claim:mtp_pred_n_off -->104.9<!-- /claim --> vs <!-- claim:mtp_pred_n_on -->123.2<!-- /claim --> generated tokens per request). End-to-end wall time per request was <!-- claim:mtp_wall_off -->97.4<!-- /claim --> s and <!-- claim:mtp_wall_on -->94.5<!-- /claim --> s (SD <!-- claim:mtp_wall_sd_off -->4.13<!-- /claim --> s and <!-- claim:mtp_wall_sd_on -->2.46<!-- /claim --> s). The mean wall times differ by about 2.9 s, which is small relative to the spread of the individual requests. Those means are reported descriptively: this study does not test a wall-time effect and makes no equivalence claim. The point is the share: the decode gain is real and large, but it is a decode-throughput gain, not a proportionally faster request.
+
 ### B. Difference interval
 
-The difference interval is calculated as an **unpaired** interval. Each request has an independent nonce, so the observations are not paired even though the experiment uses interleaved blocks.
+The difference interval is **unpaired**: each request has its own nonce, so a paired analysis does not apply even though the experiment uses interleaved blocks.
 
 For the two arms:
 
-- MTP off: SEM 0.38 t/s
-- MTP on: SEM 1.99 t/s
+- MTP off: SD <!-- claim:mtp_tg_sd_off -->1.20<!-- /claim --> t/s, SEM 0.38 t/s
+- MTP on: SD <!-- claim:mtp_tg_sd_on -->6.28<!-- /claim --> t/s, SEM 1.99 t/s
 - combined difference interval: approximately **±<!-- claim:mtp_ci_half -->4.58<!-- /claim --> t/s**, i.e. **[19.19, 28.34] t/s**
 
-The interval is an unpaired 95% confidence interval for the difference in means. It uses a Welch standard error and the conservative multiplier `t(df=9)=2.262`; the Welch–Satterthwaite degrees of freedom are approximately 9.66. Ten runs per arm were retained; two warmups per server start were discarded; all retained runs were reported, including the 21.4 t/s outlier. One initial on-block was discarded for a port conflict with a stale server and rerun; it was not excluded for its result. The interval covers run-to-run variation under the documented design; it does not cover uncertainty from undocumented per-run configuration.
+The interval is a **nominal 95% Welch interval** computed from the individual request measurements under an assumption that those observations are independent. It uses a Welch standard error and the conservative multiplier `t(df=9)=2.262`; the Welch–Satterthwaite degrees of freedom are approximately 9.66. It is not a population interval for the effect of MTP. Ten runs per arm were retained; two warmups per server start were discarded; all retained runs were reported, including the 21.4 t/s outlier. One initial on-block was discarded for a port conflict with a stale server and rerun; it was not excluded for its result.
+
+The independence assumption is the weak point rather than the arithmetic. The ten kept requests of an arm are two groups of five issued against a single server start ([Section III](#iii-measurement-protocol)), so within-phase correlation would make the interval narrower than the design warrants. With two blocks per arm, a block-clustered interval is not estimable. The interval therefore describes request-level variation under this run design; it is not a block-level or population-level uncertainty interval, and it does not cover uncertainty from undocumented per-run configuration. Strengthening it requires independent server starts with randomized or counterbalanced arm order across starts; more requests inside one phase would not address the clustering.
 
 The two experimental blocks moved in the same direction:
 
-| Block | MTP off | MTP on | Difference |
-|---|---:|---:|---:|
-| Block 1 | 15.04 t/s | 40.69 t/s | +25.65 |
-| Block 2 | 14.53 t/s | 36.42 t/s | +21.89 |
+| Block | MTP off | MTP on | SD (off / on) | Difference |
+|---|---:|---:|---:|---:|
+| Block 1 | 15.04 t/s | 40.69 t/s | 0.36 / <!-- claim:mtp_on_sd_b1 -->2.42<!-- /claim --> t/s | +25.65 |
+| Block 2 | 14.53 t/s | 36.42 t/s | 1.72 / <!-- claim:mtp_on_sd_b2 -->8.46<!-- /claim --> t/s | +21.89 |
 
-These block means are descriptive; they are not used as a separate block-level confidence interval.
+These block means are descriptive; they are not used as a separate block-level confidence interval. The spread within a block is not constant: the on-arm SD is <!-- claim:mtp_on_sd_b1 -->2.42<!-- /claim --> t/s in block 1 and <!-- claim:mtp_on_sd_b2 -->8.46<!-- /claim --> t/s in block 2, and the retained 21.4 t/s run accounts for most of the block-2 spread — the other four on-arm runs in that block are tightly grouped. Because the two phases of each arm sit symmetrically in the run order, a linear trend cancels in the mean of the two differences to first order; the block-level table shows how much variation remains beyond that.
 
 ### C. What the result means
 
@@ -337,6 +352,8 @@ During deep generation, the GPU was observed at approximately:
 - **82% utilization**
 - **107 W**
 - against a **170 W** power limit.
+
+These figures come from the deep-context measurement in [Section II](#ii-depth-0-throughput-and-the-long-context-gap) on the supporting 28B track. They were recorded during that generation, not sampled per request in the MTP A/B of [Section V](#v-mtp-at-64k-live-29b), where only VRAM and host RAM were sampled; the sampling tool used for the utilization and power readings was not recorded.
 
 The GPU was therefore not fully saturated during the measured decode path.
 

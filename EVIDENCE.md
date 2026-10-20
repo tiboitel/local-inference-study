@@ -76,8 +76,11 @@ alone.
   chart looks correct.
 - **Comparison method.** The MTP difference is unpaired (independent nonces),
   uses a Welch standard error and conservative `t(df=9)=2.262`, and is generated
-  in [`results/mtp_comparison.csv`](results/mtp_comparison.csv). Block means are
-  in [`results/mtp_blocks.csv`](results/mtp_blocks.csv).
+  in [`results/mtp_comparison.csv`](results/mtp_comparison.csv). The interval is
+  nominal and assumes independent requests: the ten kept requests per arm are two
+  groups of five from one server start, so within-phase correlation would make it
+  too narrow (see `LIMITATIONS.md`). Block means are in
+  [`results/mtp_blocks.csv`](results/mtp_blocks.csv).
 
 ## Release checklist
 
@@ -108,7 +111,20 @@ Status values: **DONE**, **PARTIAL**, **NOT DONE**.
 - **Run-time driver:** the driver and power limit below were captured after the
   fact on the same host and are labelled as post-hoc.
 - **Noise floor:** `~4%` is an operational threshold, not a confidence interval.
-  The per-run SEM and Student-t intervals are computed from published runs.
+  The per-run SD, SEM, and Student-t intervals are computed from published runs.
+- **Monitoring:** the MTP traces store per-request peak VRAM and host RAM,
+  recorded as the maximum observed by a sampler running about once per second
+  during the request (observed peaks, not true instantaneous maxima). Per-request
+  GPU utilization, power, and swap were not sampled in this experiment; the
+  utilization/power figures in the article come from a separate deep-context
+  observation, and the sampling tool for the peaks was not recorded.
+- **Token accounting:** the traces' `usage` block is empty, so the generated
+  token count (`timings.predicted_n`, and therefore `tg_t_s`) has no independent
+  cross-check in the published artifacts.
+- **Design clustering:** the ten kept requests per arm are two groups of five
+  from one server start each; the published interval is nominal, assumes
+  request-level independence, and does not model that grouping (see
+  `LIMITATIONS.md`).
 - **Independent reproduction:** not available for the measured runs. The public
   client is a procedure reproduction and should be compared by direction and
   uncertainty, not by exact throughput.

@@ -60,7 +60,8 @@ python scripts/build_results.py --raw data/raw --out results
 `build_results.py` reads the raw traces and emits one CSV per experiment. It is
 the *only* place a number in `results/` is produced; hand-editing a CSV breaks
 the traceability chain and will fail `scripts/check_traceability.py`. The MTP
-summary includes `mtp_ab.csv` (per-arm means, SEM, t-interval),
+summary includes `mtp_ab.csv` (per-arm means, SD, SEM, t-interval, and the
+per-request prefill/decode/wall-time means),
 `mtp_comparison.csv` (unpaired difference, Welch SE, conservative df, CI), and
 `mtp_blocks.csv` (block-level means). The claim registry in
 [`data/claims.json`](data/claims.json) binds marked article values to table

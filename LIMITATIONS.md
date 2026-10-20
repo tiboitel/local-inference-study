@@ -25,6 +25,18 @@ family (except the coding suite). Nothing below is a universal law.
   independent and is therefore too narrow; it is reported as a run-level
   interval alongside a task-clustered bootstrap. Neither is an estimate of
   performance on unseen coding tasks.
+- **Requests are clustered.** The ten kept requests per arm are two groups of
+  five issued against a single server start, so they are not ten independent
+  draws. The published interval assumes request-level independence; a
+  block-clustered interval would be design-correct but is not estimable with two
+  blocks per arm. Read it as request-level precision under the documented
+  design, not as population uncertainty. Within-block spread also differs by arm
+  and block (on-arm SD 2.42 vs 8.46 t/s), so the pooled interval understates
+  heterogeneity.
+- **Ordering inside a block is unverifiable.** The block order is reconstructed
+  from block-summary timestamps; the per-run traces carry no timestamps, so the
+  order of the five requests within a phase cannot be checked from published
+  artifacts.
 - **Content-driven variance.** MTP acceptance depends on the text; a different
   corpus moves both the mean and the variance. The reported acceptance (0.838)
   is a property of this prompt family.
@@ -53,6 +65,21 @@ family (except the coding suite). Nothing below is a universal law.
 - **Run-time GPU driver, power state, and background-load controls** were not
   logged. The driver and power values in `HARDWARE-AND-RUNTIME.md` are post-hoc
   captures and are labelled as such.
+- **Per-request GPU utilization, power, and swap were not sampled** in the MTP
+  A/B. The traces carry only per-request peak VRAM and host RAM, recorded as the
+  maximum observed by a sampler running about once per second during the
+  request; these are observed peaks, not true instantaneous maxima, and the
+  sampling tool itself was not recorded. The ~82% / 107 W figures in the article
+  come from a separate deep-context observation, not from these runs.
+- **Generated-token counts have no second source.** The traces' `usage` block is
+  empty, so `timings.predicted_n` (and therefore `tg_t_s`) rests on the server's
+  own timing record and cannot be cross-checked against an independent token
+  count in the published artifacts.
+- **Warmup and restart counts are documented as a procedure, not as a log.**
+  The run record states two warmups per server start and one server start per
+  arm phase, but the traces carry no timestamps or start markers, so the exact
+  number of starts and warmups behind the kept set cannot be counted from the
+  published artifacts.
 - **Independent reproduction** is not available: the runner and coding harness
   are private. The tables are regenerated from committed traces; the public
   client reproduces the MTP procedure, not the exact experiment.
