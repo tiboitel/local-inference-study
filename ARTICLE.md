@@ -4,11 +4,15 @@
 
 ## Abstract
 
-This study examines long-context inference for a 29B-class Mixture-of-Experts model on a single RTX 3060 with 12 GB of VRAM. The practical question is not how fast the model generates with an empty context, but what happens when a request arrives with tens of thousands of tokens already in the prompt. The experiments therefore measure the complete serving path: long-context prefill, subsequent decode, memory pressure, and the serving parameters that affect each stage.
+This study examines long-context inference for a **29B Mixture-of-Experts** model (*Qwen 29B REAP*) on a single **RTX 3060** with **12 GB** of **VRAM**. In the context of agentic use, the practical question is not how fast the model generates with an empty context, but what happens when a request arrives with tens of thousands of tokens already in the prompt. The experiments therefore measure the serving path: long-context prefill, subsequent decode, memory pressure, and the serving parameters that affect each stage.
 
-In the primary 64k-context configuration, using approximately 57.9k-token prompts, multi-token prediction (MTP) increased deep-context decode from 14.79 to 38.56 tokens/s (+160.7%), with an unpaired 95% interval of ±4.58 tokens/s. Prefill remained effectively unchanged. The increase cost 993 MiB of peak VRAM and about 1.7 GiB of host RAM. Supporting measurements on a 28B benchmark sibling show a different pattern: an MoE expert cache raised short-context prefill from 308.5 to 775.7 tokens/s while deep decode stayed around 14–15 tokens/s, and a depth-0 benchmark reported 46.0 tokens/s versus 15.3 tokens/s after a full 64k prompt.
+In the primary **64k-context** configuration, using approximately **57.9k-token prompts**, multi-token prediction (*MTP*) increased deep-context decode from **14.79** to **38.56 tokens/s** (*+160.7%*), with an estimated difference of **+23.77 tokens/s** (*~ 95% CI: ±4.58 tokens/s; n = 10 per arm*). Prefill was **645.1 tokens/s** vs **637.4 tokens/s** (*-1.19%*) showing no material change in this experiment.  The configuration used an additional **+993 MiB of peak VRAM** and about **+1.7 GiB of peak host RAM**, both are measured increases in per-run peak memory.
 
-These measurements characterize one model, host, runtime, context length and prompt family. They are not universal performance estimates.
+Additional experiments on a related **28B MoE** model (*Qwen 28B REAP*) show a different pattern: an MoE expert cache raised short-context prefill from **308.5** to **775.7 tokens/s** while deep decode stayed around **14–15 tokens/s**. A separate depth-0 benchmark reported **46.0 tokens/s** versus **15.3 tokens/s** after a full **64k prompt**. The **46.0 tokens/s** and **15.3 tokens/s** are not directly comparable. The **~3x** is a measured illustration on a related model not a controlled ratio.
+
+These measurements characterize **one model**, **one host**, **one runtime**, **one context length** and **one prompt family**.
+
+They are not universal performance estimates.
 
 ## 1. Test configuration
 
