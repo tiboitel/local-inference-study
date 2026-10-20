@@ -5,7 +5,7 @@ from pathlib import Path
 from util import ROOT
 
 ARTICLE = ROOT / "ARTICLE.md"
-IMAGE_RE = re.compile(r"!\[Figure (\d+) — [^\]]+\]\((figures/[^)]+)\)")
+IMAGE_RE = re.compile(r"!\[([^\]]+)\]\((figures/[^)]+)\)")
 
 
 class MarkdownRenderingTests(unittest.TestCase):
@@ -58,17 +58,19 @@ class MarkdownRenderingTests(unittest.TestCase):
 
     def test_figures_are_numbered_and_exist(self):
         matches = IMAGE_RE.findall(self.text)
-        self.assertEqual([int(number) for number, _ in matches],
-                         list(range(1, 8)))
+        self.assertEqual(len(matches), 7)
         self.assertEqual(self.text.count("!["), 7)
-        for number, relative in matches:
+        for number, (alt, relative) in enumerate(matches, start=1):
+            self.assertTrue(alt.strip(), f"figure {number} has empty alt text")
+            self.assertFalse(alt.startswith("Figure "),
+                             f"figure {number} alt text repeats the caption")
             self.assertTrue((ROOT / relative).is_file(), relative)
             self.assertIn(f"**Figure {number} —", self.text)
 
     def test_every_figure_has_a_text_caption(self):
         lines = self.text.splitlines()
         for index, line in enumerate(lines):
-            if not line.startswith("![Figure "):
+            if not line.startswith("!["):
                 continue
             nearby = "\n".join(lines[index + 1:index + 4])
             self.assertRegex(

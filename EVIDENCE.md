@@ -74,12 +74,13 @@ alone.
 - **Visual limits.** Figure *pixels* are not compared across platforms. The gate
   verifies source tables, mapping, and file validity; it does not prove that a
   chart looks correct.
-- **Comparison method.** The MTP difference is unpaired (independent nonces),
-  uses a Welch standard error and conservative `t(df=9)=2.262`, and is generated
-  in [`results/mtp_comparison.csv`](results/mtp_comparison.csv). The interval is
+- **Comparison method.** The MTP difference is unpaired: each request has a
+  different nonce, so there are no content-identical off/on pairs. It uses a
+  Welch standard error and conservative `t(df=9)=2.262`, and is generated in
+  [`results/mtp_comparison.csv`](results/mtp_comparison.csv). The interval is
   nominal and assumes independent requests: the ten kept requests per arm are two
-  groups of five from one server start, so within-phase correlation would make it
-  too narrow (see `LIMITATIONS.md`). Block means are in
+  groups of five, each from its own server start, so within-phase correlation
+  would make it too narrow (see `LIMITATIONS.md`). Block means are in
   [`results/mtp_blocks.csv`](results/mtp_blocks.csv).
 
 ## Release checklist
@@ -117,14 +118,20 @@ Status values: **DONE**, **PARTIAL**, **NOT DONE**.
   during the request (observed peaks, not true instantaneous maxima). Per-request
   GPU utilization, power, and swap were not sampled in this experiment; the
   utilization/power figures in the article come from a separate deep-context
-  observation, and the sampling tool for the peaks was not recorded.
+  observation. The sampling tool and its scope (process vs system memory) were
+  not recorded; the reported host-RAM cost is the difference between the arms'
+  highest observed readings, not a mean.
 - **Token accounting:** the traces' `usage` block is empty, so the generated
   token count (`timings.predicted_n`, and therefore `tg_t_s`) has no independent
   cross-check in the published artifacts.
-- **Design clustering:** the ten kept requests per arm are two groups of five
-  from one server start each; the published interval is nominal, assumes
+- **Design clustering:** the ten kept requests per arm are two groups of five,
+  each from its own server start; the published interval is nominal, assumes
   request-level independence, and does not model that grouping (see
   `LIMITATIONS.md`).
+- **Acceptance statistic:** `mtp_accept` is the unweighted mean of the ten
+  per-request draft-token acceptance ratios (`draft_n_accepted / draft_n`) on the
+  MTP-on arm; the SD is across those requests. It is not a share of generated
+  tokens and not a throughput multiplier.
 - **Independent reproduction:** not available for the measured runs. The public
   client is a procedure reproduction and should be compared by direction and
   uncertainty, not by exact throughput.

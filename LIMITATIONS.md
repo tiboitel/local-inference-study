@@ -6,10 +6,10 @@ family (except the coding suite). Nothing below is a universal law.
 
 ## Scope limits
 
-- **Single configuration point.** 64k context, `ncmoe=20`, MTP `n-max=2`. The
-  validated results do not describe 128k, other quantizations, or other `ncmoe`
-  values. The 128k numbers cited in the article come from the bench sibling and
-  are labelled there as not validated on the live profile.
+- **Single configuration point.** 64k context, `ncmoe=20`, MTP with a two-token
+  draft budget. The validated results do not describe 128k, other quantizations,
+  or other `ncmoe` values. The 128k numbers cited in the article come from the
+  bench sibling and are labelled there as not validated on the live profile.
 - **Single model.** The specific 29B REAP distill. The expectation that the
   *directions* (depth matters; MTP helps decode; expert cache helps prefill)
   hold on other MoE models with constrained VRAM is a **hypothesis**, not a
@@ -26,20 +26,26 @@ family (except the coding suite). Nothing below is a universal law.
   interval alongside a task-clustered bootstrap. Neither is an estimate of
   performance on unseen coding tasks.
 - **Requests are clustered.** The ten kept requests per arm are two groups of
-  five issued against a single server start, so they are not ten independent
+  five, each issued against its own server start, so they are not ten independent
   draws. The published interval assumes request-level independence; a
   block-clustered interval would be design-correct but is not estimable with two
-  blocks per arm. Read it as request-level precision under the documented
-  design, not as population uncertainty. Within-block spread also differs by arm
-  and block (on-arm SD 2.42 vs 8.46 t/s), so the pooled interval understates
-  heterogeneity.
+  server starts (one per block) per arm. Read it as request-level precision under
+  the documented design, not as population uncertainty. Within-block spread also
+  differs by arm and block (on-arm SD 2.42 vs 8.46 t/s), so the pooled interval
+  understates heterogeneity.
 - **Ordering inside a block is unverifiable.** The block order is reconstructed
   from block-summary timestamps; the per-run traces carry no timestamps, so the
   order of the five requests within a phase cannot be checked from published
   artifacts.
+- **Elapsed-time symmetry is unverified.** The linear-trend cancellation argument
+  applies to block order. Phase start times and durations were not logged, so
+  unequal gaps or block durations mean a trend in elapsed time is not guaranteed
+  to cancel between arms.
 - **Content-driven variance.** MTP acceptance depends on the text; a different
   corpus moves both the mean and the variance. The reported acceptance (0.838)
-  is a property of this prompt family.
+  is a property of this prompt family. It is a per-request draft-token ratio
+  (`draft_n_accepted / draft_n`), averaged unweighted across the ten MTP-on
+  requests; it is not a share of generated tokens or a throughput multiplier.
 - **Outliers are kept.** The raw traces include every kept run, including a slow
   outlier (21.4 t/s on `on-b2-r4`, at a normal 0.79 acceptance), because
   excluding it would flatter the mean. The lowest-acceptance kept run (0.729)
@@ -69,8 +75,10 @@ family (except the coding suite). Nothing below is a universal law.
   A/B. The traces carry only per-request peak VRAM and host RAM, recorded as the
   maximum observed by a sampler running about once per second during the
   request; these are observed peaks, not true instantaneous maxima, and the
-  sampling tool itself was not recorded. The ~82% / 107 W figures in the article
-  come from a separate deep-context observation, not from these runs.
+  sampling tool itself was not recorded. The reported host-RAM cost is the
+  difference between the arms' highest observed readings, not a mean, and the
+  sampler's scope (process vs system) is unknown. The ~82% / 107 W figures in
+  the article come from a separate deep-context observation, not from these runs.
 - **Generated-token counts have no second source.** The traces' `usage` block is
   empty, so `timings.predicted_n` (and therefore `tg_t_s`) rests on the server's
   own timing record and cannot be cross-checked against an independent token

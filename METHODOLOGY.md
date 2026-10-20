@@ -37,8 +37,8 @@ misleading; we use them only as a negative control.
    because a throughput win that does not fit in VRAM is not a win. GPU
    utilization, power and swap were **not** sampled per request in this
    experiment; they must not be cited as per-request measurements. The sampling
-   tool for the VRAM/RAM peaks was not recorded; only the 1 Hz interval is
-   documented.
+   tool for the VRAM/RAM peaks was not recorded, and neither was its scope
+   (process vs system memory); only the 1 Hz interval is documented.
 
 ### What one run measures
 
@@ -46,8 +46,10 @@ misleading; we use them only as a negative control.
 |---|---|
 | `pp_t_s` | `timings.prompt_per_second` — prompt tokens ÷ prompt time (prefill only) |
 | `tg_t_s` | `timings.predicted_per_second` — generated tokens ÷ decode time (decode only) |
-| `wall_s` | harness timing of the whole request, HTTP call to last streamed chunk |
+| `wall_s` | harness timing of the whole request, HTTP call to last streamed chunk; includes tokenization, HTTP, sampling and scheduling |
 | `prompt_s`, `decode_s`, `predicted_n` | the same timings converted to seconds and token counts per request |
+| `accept` | `timings.draft_n_accepted / timings.draft_n` — per-request draft-token acceptance (MTP-on only) |
+| `peaks.*` | per-request observed maxima of VRAM and host RAM at ~1 Hz |
 
 `tg_t_s` excludes prompt processing, tokenization, sampling and HTTP overhead,
 so it is a decode rate and not a request latency. It equals
@@ -59,6 +61,21 @@ cold ~58k-token prefill takes about 90 s while decode takes a few seconds. Time
 to first token would be `prompt_s` plus the first decode step, and inter-token
 latency is the inverse of `tg_t_s`; neither was recorded directly, so neither is
 published as a measurement.
+
+`accept` is the share of draft tokens proposed in a request that the verifier
+accepted, using the server's totals for that request; it excludes the verifier's
+own token. The arm statistic is the unweighted mean of the ten per-request rates
+on the MTP-on arm, and the SD is across those requests. It describes draft
+quality, not a throughput multiplier.
+
+`wall_s` is client-side. The server's `prompt_s` and `decode_s` means sum to
+about 0.5 s less than `wall_s` in both arms because tokenization, HTTP, sampling
+and scheduling are outside the server phase timings.
+
+`peaks.vram_mib` and `peaks.ram_used_mib` are the maxima observed by the ~1 Hz
+sampler during each request. The reported host-RAM cost is the difference
+between the arms' highest observed readings, not a mean; the sampler's scope
+(process vs system) was not recorded.
 
 ### The noise threshold
 
@@ -100,9 +117,10 @@ design. The interval covers request-to-request variation under the documented
 design; it does not cover uncertainty from undocumented per-run configuration.
 
 The interval also treats the ten kept requests of an arm as independent
-observations. They are two groups of five issued against a single server start
-(protocol item 3), so within-phase correlation would make the interval too
-narrow; with two blocks per arm a block-clustered interval is not estimable.
+observations. They are two groups of five, each issued against its own server
+start (protocol item 3), so within-phase correlation would make the interval too
+narrow; with two server starts (one per block) per arm a block-clustered interval
+is not estimable.
 Read the interval as request-level precision under this design, not as a
 block-level or population-level interval. Strengthening it requires independent
 server starts with randomized or counterbalanced arm order across starts; more
@@ -132,7 +150,9 @@ performance-based: no kept run was excluded for its result, and the rerun start
 followed the same two-warmup procedure. The retained set includes the slowest
 on-arm run (21.4 t/s). Per-run timestamps were not recorded in the traces, so
 the ordering of requests *within* a phase cannot be reconstructed from them; the
-block order comes from the block summaries' `finished_at` stamps.
+block order comes from the block summaries' `finished_at` stamps. The same
+limitation means a linear trend in elapsed time cannot be checked: cancellation
+is supported for block order, not for wall-clock spacing.
 
 ## Fidelity: match the shipped sampling
 

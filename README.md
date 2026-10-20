@@ -20,7 +20,7 @@ from committed traces.
 
 | # | Finding | Configuration | Cost / caveat | Evidence |
 |---|---|---|---|---|
-| 1 | **MTP more than doubles deep-context decode at 64k in the documented shared configuration: 14.79 → 38.56 t/s (+160.7%)**, while prefill changes by −1.19%, below the ~4% operational threshold. | Live 29B MTP profile, 10 runs/arm, ~57.9k prompt; identical shared serving settings, different speculative-decoding configuration | **+993 MiB peak VRAM**, ~1.7 GiB host RAM; not REPRODUCIBLE (private runner) | **MEASURED + REGENERATED** — [mtp_ab.csv](results/mtp_ab.csv) |
+| 1 | **MTP more than doubles deep-context decode at 64k in the documented shared configuration: 14.79 → 38.56 t/s (+160.7%)**, while prefill changes by −1.19%, below the ~4% operational noise threshold. | Live 29B MTP profile, 10 runs/arm, ~57.9k prompt; identical shared serving settings, different speculative-decoding configuration | **+993 MiB peak VRAM**, ~1.7 GiB peak host RAM (difference of observed maxima); not REPRODUCIBLE (private runner) | **MEASURED + REGENERATED** — [mtp_ab.csv](results/mtp_ab.csv) |
 | 2 | **Depth-0 `llama-bench` measures 46.0 t/s, but only ~15 t/s once a long prompt in a 64k-context configuration is in front of it (~3× in this comparison).** Depth-0 is a valid baseline for model-only generation; it does not capture the long-context request path. | Both rows are 28B bench-sibling measurements; the deep row is a server request, not the live 29B profile | Different configs within the sibling; this is a measured gap, not a universal ratio | **MEASURED (sibling)** — [deep_vs_depth0.csv](results/deep_vs_depth0.csv) |
 | 3 | **The MoE expert cache is the prefill lever: 308 → 776 t/s (~2.5×) in the short-context comparison.** At 64k, cache-off prefill collapses below 73 t/s, versus ~677–712 t/s with the cache on. | 28B bench sibling, 1k comparison; prompt/sampling not recorded; 64k rows are sibling measurements | Spends spare VRAM; deep decode stays ~14–15 t/s; 64k no-cache is a timeout upper bound | **MEASURED (sibling) + REGENERATED** — [moe_cache.csv](results/moe_cache.csv) |
 
@@ -54,10 +54,11 @@ estimates general performance on unseen coding tasks.
 [data/raw/mtp/](data/raw/mtp/) · rebuild: `python scripts/build_results.py &&
 python scripts/make_figures.py`. Live 29B MTP profile, 10 kept runs per arm,
 interleaved `off → on → on → off`, cold prefill (`cache_n == 0`), ~57.9k-token
-prompt. Decode 14.79 → 38.56 t/s (+160.7%, request-level unpaired 95% CI [19.19, 28.34],
+prompt. Decode 14.79 → 38.56 t/s (+160.7%, request-level unpaired nominal 95% CI [19.19, 28.34],
 also reported as ±4.58). Prefill 645 → 637 t/s (−1.19%, below the ~4%
-operational threshold). Cost: +993 MiB peak VRAM and ~1.7 GiB host RAM.
-Acceptance 0.838 (sd 0.070). The documented arms share their serving settings
+operational noise threshold). Cost: +993 MiB peak VRAM and ~1.7 GiB peak host
+RAM (difference of observed maxima). Per-request draft-token acceptance 0.838
+(SD 0.070 across requests). The documented arms share their serving settings
 and differ in their speculative-decoding configuration; per-run flags were not
 captured. The difference interval is unpaired:
 request-level Welch interval assuming independent requests, conservative
@@ -104,7 +105,8 @@ and flag detail: [HARDWARE-AND-RUNTIME.md](HARDWARE-AND-RUNTIME.md).
 **Observed in this configuration** *(MEASURED + REGENERATED)*
 
 - The *magnitudes* for this exact configuration: 64k context, `ncmoe=20`, MTP
-  `n-max=2`, `turbo4`/`turbo3`, this build, this prompt family.
+  with a two-token draft budget, `turbo4`/`turbo3`, this build, this prompt
+  family.
 - The MTP-on arm raised deep decode from 14.79 to 38.56 t/s while prefill
   changed by −1.19%, below the operational noise threshold.
 - The sibling comparison showed a ~2.5× prefill gain from the expert cache;
@@ -123,8 +125,8 @@ and flag detail: [HARDWARE-AND-RUNTIME.md](HARDWARE-AND-RUNTIME.md).
   TensorRT-LLM, MLX); other quantizations or model families.
 - 128k on the live profile — the 128k figures are bench-sibling estimates, not
   live 29B measurements.
-- That MTP `n-max=2` is the optimum draft count, or that these magnitudes
-  generalize to another corpus. Acceptance is content-driven.
+- That a two-token MTP draft budget is the optimum draft count, or that these
+  magnitudes generalize to another corpus. Acceptance is content-driven.
 - That throughput predicts correctness. The coding suite measures completion
   under hidden tests on 11 fixed tasks; neither the run-level nor the
   task-clustered interval projects to unseen coding tasks.
@@ -193,11 +195,12 @@ The protocol in brief: `POST /v1/chat/completions` with `stream: true`,
 via `cache_n == 0`); one run is one request, arms run in blocked, reversed block
 order (five consecutive kept requests per arm phase); two warmups discarded per
 server start and ≥5 kept runs per arm; mean, SD, and SEM reported, with a ~4%
-operational threshold (a lab heuristic, not a confidence interval); and peak
-VRAM and host RAM sampled per request (maximum observed by a sampler running
-about once per second during the request). GPU utilization, power, and swap were
-**not** sampled per request in this experiment. Full protocol and rejected
-framings: [METHODOLOGY.md](METHODOLOGY.md).
+operational noise threshold (a lab heuristic, not a confidence interval); and
+peak VRAM and host RAM sampled per request (maximum observed by a sampler running
+about once per second during the request). The reported host-RAM cost is the
+difference between the arms' highest observed readings, not a mean. GPU
+utilization, power, and swap were **not** sampled per request in this experiment.
+Full protocol and rejected framings: [METHODOLOGY.md](METHODOLOGY.md).
 
 | Path | Purpose |
 |---|---|
